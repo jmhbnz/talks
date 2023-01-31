@@ -1,0 +1,6 @@
+#+TITLE: Backstage kubernetes internal developer platform
+#+AUTHOR: James Blair
+#+DATE: <2023-02-01 Wed 09:00>
+
+
+For the second part of our meetup demo session we want to briefly explore the [[https://backstage.io][backstage]] internal developer platform.
