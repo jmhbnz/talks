@@ -1,0 +1,3 @@
+FROM scratch
+COPY hello_wasm.wasm /
+CMD ["/hello_wasm.wasm"]

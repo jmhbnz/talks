@@ -1,0 +1,32 @@
+#+TITLE: Running web assembly in containers
+#+AUTHOR: James Blair
+#+DATE: <2023-01-31 Tue 13:00>
+
+
+In our recent [[https://www.redhat.com/en/blog/red-hat-and-webassembly][blog post]] on Web Assembly we highlighted the implementation of WASM support into the [[https://github.com/containers/crun/][crun]] Open Container Initiative (OCI) runtime. This change paves the way for Podman and OpenShift to run WASM workloads.
+
+This demo will step through how wasm
+
+
+* Install wasm runtime
+
+
+* Compile crun with wasm support
+
+To demo this capability on our own machine we need to ensure we have a version of ~crun~ available that has support for WASM. In my case I needed to download and compile a newer release including the ~as follows:
+
+#+NAME: Compile crun with wasmedge
+#+begin_src tmate
+# Install compile dependencies
+sudo apt-get install --yes make git gcc build-essential pkgconf libtool libsystemd-dev libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev libgcrypt20-dev go
+-md2man autoconf python3 automake
+
+# Clone the crun source
+git clone https://github.com/containers/crun && cd crun
+
+# Compile with wasm flag
+./autogen.sh
+./configure --with-wasmedge
+make
+sudo make install
+#+end_src
