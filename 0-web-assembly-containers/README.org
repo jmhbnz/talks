@@ -3,7 +3,7 @@
 #+DATE: <2023-01-31 Tue 13:00>
 
 
-In our recent [[https://www.redhat.com/en/blog/red-hat-and-webassembly][blog post]] on Web Assembly we highlighted the implementation of WASM support into the [[https://github.com/containers/crun/][crun]] Open Container Initiative (OCI) runtime. This change paves the way for Podman and OpenShift to run WASM workloads.
+In our recent [[https://www.redhat.com/en/blog/red-hat-and-webassembly][blog post]] on Web Assembly we highlighted the implementation of WASM support into the [[https://github.com/containers/crun/][crun]] Open Container Initiative (OCI) runtime. This change paves the way for Podman and OpenShift to run WASM workloads alongside our traditional container workloads.
 
 This demo will step through how WASM modules can be run alongside traditional workloads in Podman.
 
@@ -47,10 +47,7 @@ git clone https://github.com/containers/crun && cd crun
 ./autogen.sh
 ./configure --with-wasmedge
 make
-sudo make install
-
-# Cleanup the crun source
-cd ../ and rm -rf crun
+sudo make install && cd ../ && rm -rf crun
 #+end_src
 
 
@@ -63,11 +60,74 @@ crun --version
 
 The output should look something like the example below:
 
-#+RESULTS: Check crun flags results
 #+begin_src bash
 crun version 1.7.2.0.0.0.80-940b
 commit: 940bf973f144c81149cf05135f127ca6f0d19eb6
 rundir: /run/user/1000/crun
 spec: 1.0.0
 +SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +WASM:wasmedge +YAJL
+#+end_src
+
+
+* Compile a wasm example application
+
+With our system setup let's compile a hello world in rust to ~.wasm~ so we can then run it with our container engine.
+
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Create new rust project
+rm -rf hello_wasm && cargo new hello_wasm --bin && cd hello_wasm
+
+# Customise the main function
+sed -i 's/world/openshift meetup/g' src/main.rs
+cat src/main.rs
+
+# Ensure we have rust wasm tooling installed
+rustup target add wasm32-wasi
+
+# Compile to the wasm target
+cargo build --target wasm32-wasi
+#+end_src
+
+
+We can run it directly with our ~wasmedge~ runtime to verify everything worked.
+
+#+NAME: Run wasm binary directly
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+wasmedge target/wasm32-wasi/debug/hello_wasm.wasm
+#+end_src
+
+
+* Build a wasm container
+
+Awesome, we have a compiled ~.wasm~ portable binary. Lets build this into an OCI compliant image so that our container engine can run it like a traditional container.
+
+#+NAME: Build wasm container
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Review contents of included containerfile
+cd ../ && cat Containerfile
+
+# Build the container with buildah
+buildah build --annotation "module.wasm.image/variant=compat" -t mywasm-image .
+#+end_src
+
+
+The interesting thing about wasm container images is just how small they can potentially be as the image doesn't contain any operating system or libraries, literally just our portable ~.wasm~ file.
+
+If we take a look at the image we just built it's only a couple of megabytes!
+
+#+NAME: Check image size
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+podman images | grep wasm
+#+end_src
+
+
+* Running a wasm container
+
+Now that we have a container image built let's run it with Podman.
+
+Note that we need to ensure Podman is pointing at our customised container runtime that has WASM support, this can be done via either configuration file or cli parameter.
+
+#+NAME: Run container image
+#+begin_src tmate
+podman --runtime /usr/local/bin/crun run -t --rm localhost/mywasm-image:latest
 #+end_src
