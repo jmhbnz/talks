@@ -5,22 +5,41 @@
 
 In our recent [[https://www.redhat.com/en/blog/red-hat-and-webassembly][blog post]] on Web Assembly we highlighted the implementation of WASM support into the [[https://github.com/containers/crun/][crun]] Open Container Initiative (OCI) runtime. This change paves the way for Podman and OpenShift to run WASM workloads.
 
-This demo will step through how wasm
+This demo will step through how WASM modules can be run alongside traditional workloads in Podman.
 
 
 * Install wasm runtime
 
+Our first pre-requisite step is to ensure our machine has a WASM runtime installed. For this demo we will use [[https://wasmedge.org/][WasmEdge]].
+
+Run the code block below to install WasmEdge into the ~/usr/local/~ dir using the project install script.
+
+#+NAME: Install wasmedge
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Install via script
+curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -p /usr/local
+
+# Verify installed version
+wasmedge --version
+#+end_src
+
 
 * Compile crun with wasm support
 
-To demo this capability on our own machine we need to ensure we have a version of ~crun~ available that has support for WASM. In my case I needed to download and compile a newer release including the ~as follows:
+Once ~wasmedge~ is available we then need to ensure we have a version of ~crun~ available that has support for WASM. In my case I needed to download and compile a newer release including the ~--with-wasmedge~ compile flag.
+
+We need to start with installing compile dependencies, these are listed [[https://github.com/containers/crun#ubuntu][here]] in the official docs.
+
+#+NAME: Install compile dependencies
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+sudo apt-get install --yes make git gcc build-essential pkgconf libtool libsystemd-dev libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev libgcrypt20-dev go-md2man autoconf python3 automake
+#+end_src
+
+
+Once the required dependencies are present on our system we can clone down the source and compile it with the additional wasmedge flag.
 
 #+NAME: Compile crun with wasmedge
-#+begin_src tmate
-# Install compile dependencies
-sudo apt-get install --yes make git gcc build-essential pkgconf libtool libsystemd-dev libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev libgcrypt20-dev go
--md2man autoconf python3 automake
-
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 # Clone the crun source
 git clone https://github.com/containers/crun && cd crun
 
@@ -29,4 +48,26 @@ git clone https://github.com/containers/crun && cd crun
 ./configure --with-wasmedge
 make
 sudo make install
+
+# Cleanup the crun source
+cd ../ and rm -rf crun
+#+end_src
+
+
+If everything worked correctly we can see the ~+WASM:wasmedge~ flag in our crun version information:
+
+#+NAME: Check crun flags
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+crun --version
+#+end_src
+
+The output should look something like the example below:
+
+#+RESULTS: Check crun flags results
+#+begin_src bash
+crun version 1.7.2.0.0.0.80-940b
+commit: 940bf973f144c81149cf05135f127ca6f0d19eb6
+rundir: /run/user/1000/crun
+spec: 1.0.0
++SYSTEMD +SELINUX +APPARMOR +CAP +SECCOMP +EBPF +WASM:wasmedge +YAJL
 #+end_src
