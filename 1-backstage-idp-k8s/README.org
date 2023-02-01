@@ -4,3 +4,67 @@
 
 
 For the second part of our meetup demo session we want to briefly explore the [[https://backstage.io][backstage]] internal developer platform.
+
+An Internal Developer Platform (IDP) is the sum of all the tech and tools that a platform engineering team binds together to pave golden paths for developers. IDPs lower cognitive load across the engineering organization and enable developer self-service, without abstracting away context from developers or making the underlying tech inaccessible.
+
+
+* Install kubernetes
+
+We want to deploy backstage as a container onto our cluster so the first thing we need to do is ensure we have a cluster available. We can set one up on our machine with a one liner.
+
+#+NAME: Install kubernetes cluster
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--write-kubeconfig-mode 0644" sh -s - && cp /etc/rancher/k3s/k3s.yaml ~/.kube/config && chown $USER:$USER ~/.kube/config
+#+end_src
+
+
+Before we proceed let's test our cluster is running successfully by checking the node state with ~kubectl~.
+
+#+NAME: Verify cluster state
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+kubectl get nodes
+#+end_src
+
+
+We should see a single node in the ~Ready~ state after running the following:
+
+#+begin_src bash
+NAME           STATUS   ROLES                  AGE     VERSION
+james-laptop   Ready    control-plane,master   3m46s   v1.25.6+k3s1
+#+end_src
+
+
+* Install backstage
+
+Once our cluster is running we can deploy backstage with ~helm~.
+
+#+NAME: Deploy backstage
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Clone chart source
+git clone https://github.com/backstage/charts.git
+
+# Ensure namespace exists
+kubectl create namespace backstage
+
+# Obtain any dependant charts
+cd charts/charts/backstage && helm dependency update
+
+# Deploy backstage via helm chart
+helm upgrade --install --namespace backstage backstage .
+#+end_src
+
+
+After a short wait for deployment we can check the health with ~kubectl~ and should see the pod running successfully
+
+#+NAME: Check pod health
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+kubectl get pods --namespace backstage
+#+end_src
+
+
+If our pod is running successfully we can then use ~kubectl port forward~ to access the deployed pod temporarily in our browser.
+
+#+NAME: Access deployment
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+kubectl port-forward service/backstage --namespace backstage 7007
+#+end_src
