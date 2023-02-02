@@ -128,6 +128,6 @@ Now that we have a container image built let's run it with Podman.
 Note that we need to ensure Podman is pointing at our customised container runtime that has WASM support, this can be done via either configuration file or cli parameter.
 
 #+NAME: Run container image
-#+begin_src tmate
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 podman --runtime /usr/local/bin/crun run -t --rm localhost/mywasm-image:latest
 #+end_src

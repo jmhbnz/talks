@@ -1,2 +1,17 @@
-# openshift-meetup-demos
-Brief demonstrations I ran at the February 2023 OpenShift meetup in Wellington.
+#+TITLE: Talks monorepo
+#+AUTHOR: James Blair
+#+DATE: <2023-02-03 Fri 10:30>
+
+Over the last few years I've given many talks and demos at community events, it's one of the things I really love to do. To support these talks and demo's I've historically created separate repositories for each which ends up creating a bit of clutter in github so moving forward I will be using this monorepo to keep things together.
+
+Additionally I want to keep and track a bit more of an overview for the talks I've given with things like links to recordings so this repository will hopefully make it easier for me to do that.
+
+Whether you attended one of my talks or just stumbled upon this repository, I hope that you will find these materials informative and helpful in your own projects.
+
+
+* List of talks:
+
+#+CAPTION: List of talks
+| Date       | Title                                           | Material |
+|------------|-------------------------------------------------+----------|
+| 01-02-2023 |OpenShift Meetup, Cloud Native Landscape Updates | [[./2023-02-01-openshift-meetup/][link]]     |

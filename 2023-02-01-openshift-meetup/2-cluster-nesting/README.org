@@ -1,0 +1,8 @@
+#+TITLE: Cluster nesting with vcluster
+#+AUTHOR: James Blair
+#+DATE: <2023-02-01 Wed 09:00>
+
+
+For our third brief demo this afternoon we want to tinker with cluster nesting, aka kubernetes in kubernetes.
+
+* Install vcluster cli
