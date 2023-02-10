@@ -1,0 +1,12 @@
+#+TITLE: Connecting clouds the easy way, introducing Skupper
+#+AUTHOR: James Blair
+#+DATE: <2023-02-10 Tue 17:00>
+
+
+* Abstract
+
+Exciting new open source project [[https://skupper.io/][Skupper]] opens up new opportunities for hybrid cloud and application migration, solving all manner of tricky multi-cluster and traditional infrastructure integration challenges.
+
+In this session we will explore Skupper together, with live demo's focused on overcoming the business challenges many of us encounter along our cloud native journeys.
+
+[[./images/skupper-overview.png]]
