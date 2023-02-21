@@ -3,10 +3,71 @@
 #+DATE: <2023-02-10 Tue 17:00>
 
 
-* Abstract
+Exciting open source project [[https://skupper.io/][Skupper]] opens up new opportunities for hybrid cloud and application migration, solving all manner of tricky multi-cluster and traditional infrastructure integration challenges.
 
-Exciting new open source project [[https://skupper.io/][Skupper]] opens up new opportunities for hybrid cloud and application migration, solving all manner of tricky multi-cluster and traditional infrastructure integration challenges.
-
-In this session we will explore Skupper together, with live demo's focused on overcoming the business challenges many of us encounter along our cloud native journeys.
+In this session we will explore Skupper together, with live demos focused on overcoming the business challenges many of us encounter along our cloud native journeys.
 
 [[./images/skupper-overview.png]]
+
+
+* Demo one - progressive migration
+
+For our first demo we will highlight the possibility of progressive migrations, using the virtual application network of skupper to join two kubernetes clusters together so that we can have some application components migrated to a new cluster while the remaining application components continue to run in the old cluster.
+
+
+** Install skupper cli
+
+The skupper command-line tool is the primary entrypoint for installing and configuring the Skupper infrastructure. You need to install the skupper command only once for each development environment.
+
+We can use the provided install script to install skupper:
+
+#+NAME: Install skupper client and check version
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+curl https://skupper.io/install.sh | sh && skupper version
+#+end_src
+
+
+** Deploy demo workload on premises
+
+
+
+
+
+
+** Initialise skupper on premises
+
+Once we have skupper client installed lets initialise skupper in the kubernetes cluster running on our local machine, this will be our "private" / "on premise" cluster for the purposes of the demo.
+
+#+NAME: Initialise skupper on local cluster
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Set kubeconfig
+export KUBECONFIG=$HOME/.kube/config
+
+# Ensure namespace exists & set context
+kubectl create namespace demo-onprem --dry-run=client -o yaml | kubectl apply -f -
+kubectl config set-context --current --namespace demo-onprem
+
+# Initialise skupper
+skupper init && skupper status
+#+end_src
+
+
+With skupper initialised lets take a look at the included web console:
+
+#+NAME: Open skupper web interface
+#+begin_src tmate :socket /tmp/james.tmate.tmate
+# Retrieve skupper credentials
+export password=$(kubectl get secret skupper-console-users -o json | jq -r '.data.admin' | base64 --decode)
+
+# Retrieve console url
+export console=$(kubectl get service skupper --output jsonpath="{.status.loadBalancer.ingress[0].ip}")
+
+# Open skupper console
+flatpak run org.chromium.Chromium --new-window "https://admin:${password}@${console}:8080"
+#+end_src
+
+
+
+
+
+* Demo two - high availability
