@@ -29,7 +29,7 @@ curl https://skupper.io/install.sh | sh && skupper version
 
 ** Deploy demo workload on premises
 
-Before we get into deploying skupper lets get familiar with our demo workload which is a traditional three tier container based application for a medical clinic consisting of postgres database, java backend service and web frontend.
+Before we get into deploying skupper lets get familiar with our demo workload which is a traditional three tier container based application for a medical clinic patient portal consisting of postgres database, java backend service and web frontend.
 
 #+NAME: Deploy demo workload on premises
 #+begin_src tmate :socket /tmp/james.tmate.tmate
@@ -59,7 +59,7 @@ Once we have skupper client installed and a workload running lets initialise sku
 
 #+NAME: Initialise skupper on local cluster
 #+begin_src tmate :socket /tmp/james.tmate.tmate
-skupper init && skupper status
+clear && skupper init && skupper status
 #+end_src
 
 
@@ -147,6 +147,9 @@ clear
 kubectl --kubeconfig $HOME/.kube/rosa --namespace demo-public create --filename 1-progressive-migration/frontend.yaml
 kubectl --kubeconfig $HOME/.kube/rosa --namespace demo-public rollout status deployment/frontend
 
+oc --kubeconfig $HOME/.kube/rosa --namespace demo-public create route edge frontend --service=frontend
+export route=$(oc --kubeconfig $HOME/.kube/rosa --namespace demo-public get routes frontend --output jsonpath="{.status.ingress[0].host}")
+
 kubectl delete --filename 1-progressive-migration/frontend.yaml --ignore-not-found=true
 #+end_src
 
@@ -155,7 +158,7 @@ kubectl delete --filename 1-progressive-migration/frontend.yaml --ignore-not-fou
 #+begin_src tmate :socket /tmp/james.tmate.tmate
 firefox --new-window \
         --new-tab --url "https://admin:${password}@${console}:8080" \
-        --new-tab --url "http://localhost:9090"
+        --new-tab --url "https://${route}"
 #+end_src
 
 In theory our application continues to run as normal, We just performed a progressive migration! 🎉
