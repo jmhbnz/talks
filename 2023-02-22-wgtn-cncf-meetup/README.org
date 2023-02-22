@@ -47,6 +47,12 @@ kubectl rollout status deployment/payment-processor
 kubectl create --filename 1-progressive-migration/frontend.yaml
 kubectl rollout status deployment/frontend
 
+kubectl get pods
+#+end_src
+
+
+#+NAME: Review application
+#+begin_src tmate :socket /tmp/james.tmate.tmate
 firefox --new-window "http://localhost:9090"
 
 kubectl port-forward deployment/frontend 9090:8080 &
@@ -69,6 +75,7 @@ With skupper initialised lets take a look at the included web console:
 #+begin_src tmate :socket /tmp/james.tmate.tmate
 export password=$(kubectl get secret skupper-console-users --output jsonpath="{.data.admin}" | base64 --decode)
 export console=$(kubectl get service skupper --output jsonpath="{.status.loadBalancer.ingress[0].ip}")
+echo "${password}" | xclip -selection c
 
 firefox --new-window "https://admin:${password}@${console}:8080"
 #+end_src
@@ -114,7 +121,7 @@ Now that we have linked our clusters lets review the skupper interface to confir
 
 #+NAME: Review skupper console
 #+begin_src tmate :socket /tmp/james.tmate.tmate
-firefox --new-window "https://admin:${password}@${console}:8080"
+firefox --private-window "https://admin:${password}@${console}:8080"
 #+end_src
 
 
