@@ -9,6 +9,9 @@ In this session we will explore Skupper together, with live demos focused on ove
 
 [[./images/skupper-overview.png]]
 
+#+begin_export html
+<iframe width="560" height="315" src="https://www.youtube.com/embed/et-Oilr0Hz0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+#+end_export
 
 * Demo one - progressive migration
 
@@ -66,6 +69,8 @@ Once we have skupper client installed and a workload running lets initialise sku
 #+NAME: Initialise skupper on local cluster
 #+begin_src tmate :socket /tmp/james.tmate.tmate
 clear && skupper init && skupper status
+
+kubectl get pods
 #+end_src
 
 
@@ -90,6 +95,8 @@ So we've been tasked with migrating this application to public cloud, rather tha
 clear && kubectl --kubeconfig=$HOME/.kube/rosa create namespace demo-public --dry-run=client --output yaml | kubectl --kubeconfig=$HOME/.kube/rosa apply --filename -
 
 skupper --kubeconfig=$HOME/.kube/rosa --namespace demo-public init
+
+kubectl --kubeconfig=$HOME/.kube/rosa --namespace demo-public get pods
 #+end_src
 
 
