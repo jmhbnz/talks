@@ -9,9 +9,10 @@ In this session we will explore Skupper together, with live demos focused on ove
 
 [[./images/skupper-overview.png]]
 
-#+begin_export html
-<iframe width="560" height="315" src="https://www.youtube.com/embed/et-Oilr0Hz0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-#+end_export
+You can watch a recording of this demo on youtube: https://www.youtube.com/watch?v=et-Oilr0Hz0
+
+[[./images/video.png]]
+
 
 * Demo one - progressive migration
 
