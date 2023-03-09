@@ -16,3 +16,4 @@ Whether you attended one of my talks or just stumbled upon this repository, I ho
 |------------+------------+------------------------------------------------------------------+----------|
 | 01-02-2023 | Wellington | OpenShift Meetup, Cloud Native Landscape Updates                 | [[./2023-02-01-openshift-meetup/][link]]     |
 | 22-02-2023 | Wellington | CNCF Meetup, Connecting clouds the easy way, introducing Skupper | [[./2023-02-22-wgtn-cncf-meetup][link]]     |
+| 15-03-2023 | Wellington | Ansible Meetup, Lightening Talk, ChatOps in Jira via Ansible     | [[./2023-03-15-wgtn-ansible-meetup][link]]     |

@@ -1,0 +1,7 @@
+#+TITLE: Lightning Talk: ChatOps in Jira via Ansible
+#+AUTHOR: James Blair
+#+DATE: <2023-03-09 Thu 12:30>
+
+ChatOps is a collaboration model that connects people, tools, process, and automation into a transparent workflow. This flow connects the work needed, the work happening, and the work done in a persistent location staffed by the people, bots, and related tools.
+
+This is a short 15 minute lightning talk showcasing how we can leverage the [[https://www.ansible.com/products/automation-platform][Ansible Automation Platform]] Automation [[https://www.ansible.com/products/controller][Controller]] as the engine to power
