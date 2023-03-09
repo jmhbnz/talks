@@ -4,4 +4,14 @@
 
 ChatOps is a collaboration model that connects people, tools, process, and automation into a transparent workflow. This flow connects the work needed, the work happening, and the work done in a persistent location staffed by the people, bots, and related tools.
 
-This is a short 15 minute lightning talk showcasing how we can leverage the [[https://www.ansible.com/products/automation-platform][Ansible Automation Platform]] Automation [[https://www.ansible.com/products/controller][Controller]] as the engine to power
+This is a short 15 minute lightning talk showcasing how we can leverage the [[https://www.ansible.com/products/automation-platform][Ansible Automation Platform]] Automation [[https://www.ansible.com/products/controller][Controller]] as the engine to power ChatOps style end to self service workflows in Atlassian Jira.
+
+
+* Pre-requisites
+
+This talk requires an existing OpenShift 4 cluster to be running and assumes you have permission to deploy workloads to the cluster.
+
+
+* Deploy jira instance
+
+Our first step is to deploy a containerised instance of Jira server.
