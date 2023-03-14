@@ -1,0 +1,70 @@
+#+TITLE: Deploying demo jira instance
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: <2023-03-10 Fri 10:15>
+
+This guide will outline the steps to follow to deploy a demo jira instance to an existing kubernetes cluster. For our purposes that cluster will be an existing [[https://aws.amazon.com/rosa/][ROSA]] cluster running in AWS ~ap-southeast-1~.
+
+
+* Login to cluster
+
+As mentioned above we have an existing OpenShift cluster to use for this demo, we will need to login to the cli to automate the remainder of the jira setup.
+
+#+NAME: Login to openshift
+#+begin_src tmate
+oc login --kubeconfig ~/.kube/rosa --token=<token> --server=<server>
+#+end_src
+
+
+* Create kubernetes namespace
+
+Our first step is to create a kubernetes [[https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/][namespace]] for our jira deployment.
+
+#+NAME: Create jira namespace
+#+begin_src tmate
+kubectl --kubeconfig ~/.kube/rosa create namespace jira
+#+end_src
+
+
+* Build and deploy jira
+
+Once we have a namespace we can use a one line ~oc~ command to create a build process in OpenShift based on our github repository containing a Dockerfile.
+
+This will build a container image within OpenShift and then create a Deployment of that image which will give us a single running jira pod.
+
+Note: This deployment will not be backed by persistent storage but for demo purposes this is fine. Do not use this in production...
+
+#+NAME: Build and deploy jira
+#+begin_src tmate
+# Initiate the build from github
+oc --kubeconfig ~/.kube/rosa --namespace jira --name jira new-app https://github.com/jmhbnz/docker-atlassian-jira
+
+# Watch the progress
+oc --kubeconfig ~/.kube/rosa --namespace jira logs --follow buildconfig/jira
+#+end_src
+
+
+Once the container image has built successfully we can verify the jira instance is running by checking the pod status.
+
+#+NAME: Check pod status
+#+begin_src tmate
+kubectl --kubeconfig ~/.kube/rosa --namespace jira get pods
+#+end_src
+
+
+* Expose jira deployment
+
+With our jira instance now running within our cluster we can create a ~route~ to expose it outside the cluster.
+
+#+NAME: Expose jira deployment
+#+begin_src tmate
+oc --kubeconfig ~/.kube/rosa --namespace jira expose service jira
+#+end_src
+
+
+With our route created lets retrieve that and perform the first time setup for jira. This is currently a manual process involving obtaining a trial license from [[https://my.atlassian.com/product][atlassian]].
+
+#+NAME: Retrieve jira route
+#+begin_src tmate
+echo http://$(oc --kubeconfig ~/.kube/
+rosa --namespace jira get route | grep apps.com | awk '{print $2}')
+#+end_src

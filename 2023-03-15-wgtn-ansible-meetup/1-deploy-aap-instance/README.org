@@ -1,0 +1,85 @@
+#+TITLE: Deploying demo aap instance
+#+AUTHOR: James Blair <jablair@redhat.com>
+#+DATE: <2023-03-10 Fri 10:15>
+
+This guide will outline the steps to follow to deploy a demo ansible automation platform instance to an existing kubernetes cluster. For our purposes that cluster will be an existing [[https://aws.amazon.com/rosa/][ROSA]] cluster running in AWS ~ap-southeast-1~.
+
+
+* Login to cluster
+
+As mentioned above we have an existing OpenShift cluster to use for this demo, we will need to login to the cli to automate the remainder of the jira setup.
+
+#+NAME: Login to openshift
+#+begin_src tmate
+oc login --kubeconfig ~/.kube/rosa --token=<token> --server=<server>
+#+end_src
+
+
+* Create kubernetes namespace
+
+Our first step is to create a kubernetes [[https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/][namespace]] for our aap deployment.
+
+#+NAME: Create aap namespace
+#+begin_src tmate
+kubectl --kubeconfig ~/.kube/rosa create namespace aap
+#+end_src
+
+
+* Subscribe to aap operator
+
+Once we have a namespace we can create a ~Subscription~ custom resource to install the latest version of the Ansible Automation Platform [[https://kubernetes.io/docs/concepts/extend-kubernetes/operator/][operator]].
+
+#+begin_src tmate
+cat << EOF | kubectl --kubeconfig ~/.kube/rosa apply -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ansible-automation-platform-operator
+  namespace: aap
+spec:
+  channel: stable-2.3
+  installPlanApproval: Automatic
+  name: ansible-automation-platform-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: aap-operator.v2.3.0-0.1677639985
+EOF
+#+end_src
+
+
+* Create aap custom resource
+
+Once the operator is installed we can create an ~AutomationController~ custom resource as outlined below:
+
+#+begin_src tmate
+cat << EOF | kubectl --kubeconfig ~/.kube/rosa apply -f -
+apiVersion: automationcontroller.ansible.com/v1beta1
+kind: AutomationController
+metadata:
+  name: aap-demo
+  namespace: aap
+spec:
+  create_preload_data: false
+  route_tls_termination_mechanism: Edge
+  garbage_collect_secrets: false
+  ingress_type: Route
+  loadbalancer_port: 80
+  image_pull_policy: IfNotPresent
+  projects_storage_size: 8Gi
+  task_privileged: false
+  projects_storage_access_mode: ReadWriteMany
+  projects_persistence: false
+  replicas: 1
+  admin_user: admin
+  loadbalancer_protocol: http
+  nodeport_port: 30080
+EOF
+#+end_src
+
+
+We can obtain the route to access the instance with the command below:
+
+#+NAME: Retrieve aap route
+#+begin_src tmate
+echo https://$(oc --kubeconfig ~/.kube/rosa --namespace aap get route | grep apps.com | awk '{print $2}')
+#+end_src
