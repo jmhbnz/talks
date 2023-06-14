@@ -1,0 +1,8 @@
+#+TITLE: Workshop: Chaos Engineering
+#+AUTHOR: James Blair
+#+DATE: <2023-06-14 Wed 21:00>
+#+OPTIONS: ^:{}
+
+Chaos Engineering is the discipline of experimenting on a system in order to build confidence in the system’s capability to withstand turbulent conditions in production^[[https://principlesofchaos.org/][{1}]].
+
+This document captures some hands on excercises I used during a hands on chaos engineering workshop.
