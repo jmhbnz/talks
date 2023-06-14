@@ -19,7 +19,10 @@ A guide for this portion of the workshop is available [[https://redhat-scholars.
 
 After completing the above individual hands on excercises the workshop group will come back together to discuss cluster level experiments and follow through the outline below to run some basic experiments.
 
+
 ** Ensure we are logged into our experiment cluster
+
+Before we begin we need to ensure we have the ~oc~ cli installed locally and we have authenticated to the cluster we will be performing experiments on. This guide assuments the file ~/.kube/config~ will be present.
 
 #+begin_src bash
 oc login --token <token> --server <server>
@@ -28,6 +31,10 @@ oc login --token <token> --server <server>
 
 ** Start a cerberus cluster monitoring instance
 
+Once we are logged into our cluster lets deploy a local instance of cerberus to monitor the cluster and provide go/no go signals to our chaos experiments based on the health of the cluster.
+
+We want to deploy cerberus separately to our cluster to ensure our chaos experiments can't impact our chaos monitoring so we'll spin up cerberus locally with ~podman~.
+
 #+begin_src bash
 podman run --net=host --name=cerberus --env-host=true --privileged -d -v /home/james/.kube/config:/root/.kube/config:Z quay.io/openshift-scale/cerberus:kraken-hub
 #+end_src
@@ -35,12 +42,16 @@ podman run --net=host --name=cerberus --env-host=true --privileged -d -v /home/j
 
 ** Test that cerberus is serving and cluster is ready
 
+Once the podman cerberus container is running we can curl the local port ~8080~ to check the cluster health status.
+
 #+begin_src bash
-curl -v localhost:8080
+curl localhost:8080
 #+end_src
 
 
-** Start kraken with cerberus enabled and inject pod failures
+** Complete pod failure experiments with kraken
+
+If all is well with our cluster and cerberus lets start wreaking havoc! This example below will disrupt our etcd cluster in the control plane to verify that even while we temporarily lose a member the cluster continues to operate and recovers automatically.
 
 #+begin_src bash
 export CERBERUS_ENABLED=true
@@ -52,3 +63,24 @@ export EXPECTED_POD_COUNT=3
 podman run --privileged --name=kraken --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:pod-scenarios
 #+end_src
 
+
+With the scenario running we can follow the progress by reviewing the ~kraken~ pod logs in podman.
+
+#+begin_src bash
+podman logs -f kraken
+#+end_src
+
+
+** Complete node failure experiments with kraken
+
+A more destructive test could be starting and stopping nodes, lets try that now!
+
+#+begin_src bash
+export CERBERUS_ENABLED=true
+export CERBERUS_URL=http://0.0.0.0:8080
+export ACTION=node_stop_start_scenario
+export INSTANCE_COUNT=1
+export CLOUD_TYPE=aws
+export WAIT_DURATION=20
+podman run --name=node_scenario --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:node-scenarios
+#+end_src
