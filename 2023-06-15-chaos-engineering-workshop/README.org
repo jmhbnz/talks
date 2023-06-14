@@ -1,8 +1,54 @@
 #+TITLE: Workshop: Chaos Engineering
 #+AUTHOR: James Blair
 #+DATE: <2023-06-14 Wed 21:00>
-#+OPTIONS: ^:{}
 
-Chaos Engineering is the discipline of experimenting on a system in order to build confidence in the system’s capability to withstand turbulent conditions in production^[[https://principlesofchaos.org/][{1}]].
+Chaos Engineering is [[https://principlesofchaos.org/][defined]] as the discipline of experimenting on a system in order to build confidence in the system’s capability to withstand turbulent conditions in production.
 
-This document captures some hands on excercises I used during a hands on chaos engineering workshop.
+This document captures some hands on excercises I used during a chaos engineering workshop.
+
+
+
+* Application level experiments
+
+Leveraging a combination of OpenShift, Istio, Kiali, ArgoCD and Grafana we can run a great workshop for application level chaos engineering experiments using service mesh fault injection.
+
+A guide for this portion of the workshop is available [[https://redhat-scholars.github.io/chaos-engineering-guide/chaos-engineering/5.0/index.html][here]].
+
+
+* Cluster level experiments
+
+After completing the above individual hands on excercises the workshop group will come back together to discuss cluster level experiments and follow through the outline below to run some basic experiments.
+
+** Ensure we are logged into our experiment cluster
+
+#+begin_src bash
+oc login --token <token> --server <server>
+#+end_src
+
+
+** Start a cerberus cluster monitoring instance
+
+#+begin_src bash
+podman run --net=host --name=cerberus --env-host=true --privileged -d -v /home/james/.kube/config:/root/.kube/config:Z quay.io/openshift-scale/cerberus:kraken-hub
+#+end_src
+
+
+** Test that cerberus is serving and cluster is ready
+
+#+begin_src bash
+curl -v localhost:8080
+#+end_src
+
+
+** Start kraken with cerberus enabled and inject pod failures
+
+#+begin_src bash
+export CERBERUS_ENABLED=true
+export CERBERUS_URL=http://0.0.0.0:8080
+export NAMESPACE=openshift-etcd
+export POD_LABEL=app=etcd
+export DISRUPTION_COUNT=1
+export EXPECTED_POD_COUNT=3
+podman run --privileged --name=kraken --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:pod-scenarios
+#+end_src
+
