@@ -60,14 +60,14 @@ export NAMESPACE=openshift-etcd
 export POD_LABEL=app=etcd
 export DISRUPTION_COUNT=1
 export EXPECTED_POD_COUNT=3
-podman run --privileged --name=kraken --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:pod-scenarios
+podman run --privileged --name=pod_scenario --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:pod-scenarios
 #+end_src
 
 
-With the scenario running we can follow the progress by reviewing the ~kraken~ pod logs in podman.
+With the scenario running we can follow the progress by reviewing the ~pod_scenario~ pod logs in podman.
 
 #+begin_src bash
-podman logs -f kraken
+podman logs -f pod_scenario
 #+end_src
 
 
@@ -83,4 +83,11 @@ export INSTANCE_COUNT=1
 export CLOUD_TYPE=aws
 export WAIT_DURATION=20
 podman run --name=node_scenario --net=host --env-host=true -v /home/james/.kube/config:/root/.kube/config:Z -d quay.io/openshift-scale/kraken:node-scenarios
+#+end_src
+
+
+As we did earleir, with the scenario running we can follow the progress by reviewing the ~node_scenario~ pod logs in podman. We can also check the node status through command line or the web console.
+
+#+begin_src bash
+podman logs -f node_scenario
 #+end_src
