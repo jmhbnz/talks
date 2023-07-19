@@ -2,7 +2,7 @@
 #+AUTHOR: James Blair
 #+DATE: <2023-02-03 Fri 10:30>
 
-Over the last few years I've given many talks and demos at community events, it's one of the things I really love to do. To support these talks and demo's I've historically created separate repositories for each which ends up creating a bit of clutter in github so moving forward I will be using this monorepo to keep things together.
+Over the last few years I've given many talks and demos at community events, it's one of the things I really love to do. To support these talks and demo's I've historically created separate repositories for each which ends up creating a bit of unmaintained clutter in github so moving forward I will be using this monorepo to keep things together.
 
 Additionally I want to keep and track a bit more of an overview for the talks I've given with things like links to recordings so this repository will hopefully make it easier for me to do that.
 
@@ -17,4 +17,5 @@ Whether you attended one of my talks or just stumbled upon this repository, I ho
 | 01-02-2023 | Wellington | OpenShift Meetup, Cloud Native Landscape Updates                 | [[./2023-02-01-openshift-meetup/][link]]     |
 | 22-02-2023 | Wellington | CNCF Meetup, Connecting clouds the easy way, introducing Skupper | [[./2023-02-22-wgtn-cncf-meetup][link]]     |
 | 15-03-2023 | Wellington | Ansible Meetup, Lightening Talk, ChatOps in Jira via Ansible     | [[./2023-03-15-wgtn-ansible-meetup][link]]     |
-| 15-06-2023 | Wellington | Workshop, Chaos Engineering                                      |          |
+| 15-06-2023 | Wellington | Workshop, Chaos Engineering                                      | [[2023-06-15-chaos-engineering-workshop][link]]     |
+| 20-07-2023 | Remote     | APAC Hybrid Cloud Kopi Hour E05, RHACM + Submariner              | [[./2023-07-20-acm-submariner-stream][link]]     |

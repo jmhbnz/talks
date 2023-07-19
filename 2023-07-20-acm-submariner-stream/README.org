@@ -1,0 +1,10 @@
+#+TITLE: Progressive cloud migrations with Red Hat Advanced Cluster Management
+#+AUTHOR: James Blair
+#+DATE: <2023-07-20 Thu 11:00>
+
+
+This is a short demo I gave during an episode of the "APAC Hybrid Cloud Kopi Hour (E05) | Managing Kubernetes Clusters in a Hybrid and Multi-Cloud World" live stream.
+
+You can watch the full stream below:
+
+[[./images/stream.png]]
