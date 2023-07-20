@@ -6,4 +6,4 @@ metadata:
   namespace: guestbook
 spec:
   type: GitHub
-  pathname: https://github.com/jmhbnz/acm-demo-app.git
+  pathname: https://github.com/jmhbnz/talks.git

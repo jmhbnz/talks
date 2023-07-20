@@ -6,7 +6,7 @@ metadata:
   name: redis-master-app-subscription-1
   annotations:
     apps.open-cluster-management.io/git-branch: main
-    apps.open-cluster-management.io/git-path: redis-master-app/redis-master
+    apps.open-cluster-management.io/git-path: 2023-07-20-acm-submariner-stream/redis/redis-master
   labels:
     app: redis-master-app
 spec:

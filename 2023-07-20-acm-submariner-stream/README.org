@@ -1,10 +1,147 @@
-#+TITLE: Progressive cloud migrations with Red Hat Advanced Cluster Management
+#+TITLE: Progressive cloud migrations with Submariner
 #+AUTHOR: James Blair
 #+DATE: <2023-07-20 Thu 11:00>
 
 
 This is a short demo I gave during an episode of the "APAC Hybrid Cloud Kopi Hour (E05) | Managing Kubernetes Clusters in a Hybrid and Multi-Cloud World" live stream.
 
+The demo covered using the networking magic of [[https://submariner.io][Submariner]] to create secure tunnels for east/west traffic between our two clusters for the purpose of exposing services from one cluster to another. The demo use case I covered was a progressive migration, where we have a two tier application that we want to migrate to another cluster while still allowing access to datasources that exist on the initial cluster.
+
 You can watch the full stream below:
 
-[[./images/stream.png]]
+[[https://www.youtube.com/watch?v=1Dc0_WAsYpE][./images/stream.png]]
+
+
+* Pre-requisites
+
+The setup for this talk assumes you already have two distinct kubernetes clusters running and are orchestrating those with [[https://www.redhat.com/en/technologies/management/advanced-cluster-management][Red Hat Advanced Cluster Management]] the distribution of [[https://open-cluster-management.io][Open Cluster Management]] supported by Red Hat.
+
+In my case for this demo I have two OpenShift clusters running in Amazon Web Services.
+
+Additionally the steps below assume you have the ~oc~ command line utility installed and area already logged into the hub cluster.
+
+
+* Step 1 - Create submariner cluster set
+
+Our first step is to login to Red Hat Advanced Cluster Management and create a new ~ManagedClusterSet~. This is the logical grouping of clusters that we will use to define which clusters to install and run submariner in.
+
+This can easily be created through the Red Hat Advanced Cluster Management user interface by navigating to **Infrastructure > Clusters > Cluster sets > Create cluster set**.
+
+Alternatively apply the yaml below:
+
+#+begin_src yaml
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSet
+metadata:
+  annotations:
+    cluster.open-cluster-management.io/submariner-broker-ns: submariner-broker
+  finalizers:
+    - cluster.open-cluster-management.io/managedclusterset-clusterrole
+    - cluster.open-cluster-management.io/submariner-cleanup
+  name: submariner
+spec:
+  clusterSelector:
+    selectorType: ExclusiveClusterSetLabel
+#+end_src
+
+
+Once our ~ManagedClusterSet~ has been created we will want to add both of our clusters to the set, again either using the user interface or applying a label to each of our ~ManagedCluster~ resources.
+
+#+begin_src bash
+oc label ManagedCluster <clustername> "cluster.open-cluster-management.io/clusterset=submariner"
+#+end_src
+
+
+* Step 2 - Install submariner addons
+
+Once our cluster set is in place we need to deploy submariner to each ~ManagedCluster~ in the ~ManagedClusterSet~.
+
+Once more, Red Hat Advanced Cluster Management makes this process straightforward. Just click into your cluster set and navigate to the **Submariner add-ons** tab and click **Install Submariner add-ons**.
+
+[[./images/install-add-ons.png]]
+
+
+To do this as code we can create a ~SubmarinerConfig~ resource for each ~ManagedCluster~, see below example.
+
+#+begin_src yaml
+apiVersion: submarineraddon.open-cluster-management.io/v1alpha1
+kind: SubmarinerConfig
+metadata:
+  finalizers:
+    - submarineraddon.open-cluster-management.io/config-cleanup
+    - submarineraddon.open-cluster-management.io/config-cleanup
+  generation: 3
+  name: submariner
+  namespace: dev-a
+spec:
+  cableDriver: libreswan
+  gatewayConfig:
+    aws:
+      instanceType: m5.xlarge
+    gateways: 1
+    rhos:
+      instanceType: PnTAE.CPU_4_Memory_8192_Disk_50
+  airGappedDeployment: false
+  IPSecDebug: false
+  credentialsSecret:
+    name: dev-a-aws-creds
+  insecureBrokerConnection: false
+  Debug: false
+  NATTEnable: true
+  imagePullSpecs: {}
+  IPSecIKEPort: 500
+  NATTDiscoveryPort: 4900
+  IPSecNATTPort: 4500
+  loadBalancerEnable: true
+  subscriptionConfig:
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  managedClusterInfo:
+    clusterName: dev-a
+    infraId: dev-a-9cbff
+    platform: AWS
+    region: ap-southeast-2
+    vendor: OpenShift
+    vendorVersion: 4.13.4
+#+end_src
+
+
+* Step 3 - Verify connectivity
+
+At this point after a short wait Submariner should be installed in both clusters and east/west traffic gateways operational.
+
+We can verify this by returning to the **Submariner add-ons** page and reviewing the status table:
+
+[[./images/status-table.png]]
+
+
+* Step 4 - Deploy application
+
+With Submariner in place lets now deploy our demo application. This is a version of the classic Guestbook application with a web frontend and redis backend.
+
+For our initial deployment we will bring both application components up on the same cluster as our initial state prior to any migration.
+
+Run the command below to deploy the application via a Red Hat Advanced Cluster Management ~Subscription~.
+
+#+begin_src bash
+oc apply --kustomize redis/acm-resources
+oc apply --kustomize guestbook/acm-resources
+#+end_src
+
+
+We can verify the application is running as expected by opening the route to our web frontend in a browser.
+
+#+begin_src bash
+oc get route --namespace guestbook guestbook
+#+end_src
+
+[[./images/guestbook.png]]
+
+
+* Step 5 - Migrate app frontend
+
+With the application deployed and our Subamariner networking in place we have all the ingredients we need to perform a progressive migration.
+
+For our progressive migration we will update the ~PlacementRule~ for our Guestbook frontend to change the cluster label to our second cluster.
+
+Once the changes are applied the frontend pods will immediately spin down on our initial cluster then create on our second cluster. We can verify that the frontend can still talk to redis as if they continued to be on the same cluster, thanks to our redis service being exposed via Submariner 🎉.
