@@ -18,12 +18,12 @@ The setup for this talk assumes you already have two distinct kubernetes cluster
 
 In my case for this demo I have two OpenShift clusters running in Amazon Web Services.
 
-Additionally the steps below assume you have the ~oc~ command line utility installed and area already logged into the hub cluster.
+Additionally the steps below assume you have the ~oc~ command line utility installed and are already logged into the hub cluster.
 
 
 * Step 1 - Create submariner cluster set
 
-Our first step is to login to Red Hat Advanced Cluster Management and create a new ~ManagedClusterSet~. This is the logical grouping of clusters that we will use to define which clusters to install and run submariner in.
+Our first step is to login to Red Hat Advanced Cluster Management and create a new ~ManagedClusterSet~. This is the logical grouping of clusters that we will use to define which clusters to install and run Submariner in.
 
 This can easily be created through the Red Hat Advanced Cluster Management user interface by navigating to **Infrastructure > Clusters > Cluster sets > Create cluster set**.
 
@@ -48,7 +48,7 @@ spec:
 Once our ~ManagedClusterSet~ has been created we will want to add both of our clusters to the set, again either using the user interface or applying a label to each of our ~ManagedCluster~ resources.
 
 #+begin_src bash
-oc label ManagedCluster <clustername> "cluster.open-cluster-management.io/clusterset=submariner"
+oc label ManagedCluster "<name>" "cluster.open-cluster-management.io/clusterset=submariner"
 #+end_src
 
 
@@ -142,6 +142,11 @@ oc get route --namespace guestbook guestbook
 
 With the application deployed and our Subamariner networking in place we have all the ingredients we need to perform a progressive migration.
 
-For our progressive migration we will update the ~PlacementRule~ for our Guestbook frontend to change the cluster label to our second cluster.
+For our progressive migration we will update the ~PlacementRule~ for our Guestbook frontend to change the cluster label to the name of our second cluster.
+
+#+begin_src bash
+sed -i 's/local-cluster/dev-a/g' guestbook/acm-resources/placementrule.yaml
+oc apply --kustomize guestbook/acm-resources
+#+end_src
 
 Once the changes are applied the frontend pods will immediately spin down on our initial cluster then create on our second cluster. We can verify that the frontend can still talk to redis as if they continued to be on the same cluster, thanks to our redis service being exposed via Submariner 🎉.
