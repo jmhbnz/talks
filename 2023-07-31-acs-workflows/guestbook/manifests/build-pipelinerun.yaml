@@ -10,7 +10,7 @@ metadata:
     operator.tekton.dev/operand-name: openshift-pipelines-addons
     pipeline.openshift.io/strategy: docker
     pipeline.openshift.io/type: kubernetes
-    tekton.dev/pipeline: guestbook
+    tekton.dev/pipeline: guestbook-build
 spec:
   params:
     - name: APP_NAME
@@ -24,7 +24,7 @@ spec:
     - name: PATH_CONTEXT
       value: 2023-07-31-acs-workflows/guestbook
   pipelineRef:
-    name: guestbook
+    name: guestbook-build
   serviceAccountName: pipeline
   timeout: 1h0m0s
   workspaces:

@@ -8,7 +8,7 @@ metadata:
     operator.tekton.dev/operand-name: openshift-pipelines-addons
     pipeline.openshift.io/strategy: docker
     pipeline.openshift.io/type: kubernetes
-  name: guestbook
+  name: guestbook-deploy
   namespace: guestbook
 spec:
   params:
@@ -28,38 +28,6 @@ spec:
       name: PATH_CONTEXT
       type: string
   tasks:
-    - name: fetch-repository
-      params:
-        - name: url
-          value: $(params.GIT_REPO)
-        - name: revision
-          value: $(params.GIT_REVISION)
-        - name: subdirectory
-          value: ''
-        - name: deleteExisting
-          value: 'true'
-      taskRef:
-        kind: ClusterTask
-        name: git-clone
-      workspaces:
-        - name: output
-          workspace: workspace
-    - name: build
-      params:
-        - name: IMAGE
-          value: $(params.IMAGE_NAME)
-        - name: TLSVERIFY
-          value: 'false'
-        - name: CONTEXT
-          value: $(params.PATH_CONTEXT)
-      runAfter:
-        - fetch-repository
-      taskRef:
-        kind: ClusterTask
-        name: buildah
-      workspaces:
-        - name: source
-          workspace: workspace
     - name: image-scan
       params:
         - name: image
@@ -70,8 +38,6 @@ spec:
           value: roxsecrets
         - name: output_format
           value: json
-      runAfter:
-        - build
       taskRef:
         kind: ClusterTask
         name: rox-image-scan
