@@ -13,4 +13,4 @@ spec:
       status: "True"
   clusterSelector:
     matchLabels:
-      name: local-cluster
+      name: dev-a

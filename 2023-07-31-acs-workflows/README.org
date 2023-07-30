@@ -1,0 +1,148 @@
+#+TITLE: RHACS Workflows & Integration
+#+AUTHOR: James Blair
+#+DATE: <2023-07-29 Sat 23:15>
+
+
+This is a short demo I gave on [[https://www.redhat.com/en/technologies/cloud-computing/openshift/advanced-cluster-security-kubernetes][Red Hat Advanced Cluster Security]].
+
+
+
+* Pre-requisites
+
+This demo setup process assumes you already have an OpenShift 4.12+ cluster running, and are logged into the ~oc~ cli locally with cluster administration privileges.
+
+For this demo I have an OpenShift ~4.12.12~ cluster running on AWS provisioned through the [[https://demo.redhat.com/catalog?item=babylon-catalog-prod/sandboxes-gpte.elt-ocp4-hands-on-acs.prod&utm_source=webapp&utm_medium=share-link][Red Hat Demo system]].
+
+#+NAME: Check oc status
+#+begin_src bash :results silent
+oc version | grep Server
+oc status
+#+end_src
+
+
+* Developer workflow integration
+
+A key element of any cloud native security platform is how it can be incorporated into software development workflows to enable security teams to gain visibility of emerging security issues and also empower developers to understand the security posture of what they are building.
+
+For this demonstration we will be using [[https://developers.redhat.com/products/openshift-dev-spaces/overview][OpenShift Dev Spaces]] as a cloud based development environment, and [[https://marketplace.visualstudio.com/items?itemName=redhat.vscode-tekton-pipelines][OpenShift Pipelines]] for a continuous integration environment.
+
+
+** Install dev spaces operator
+
+The first step to prepare the demo is to install the dev spaces operator so our cluster will be able to create cloud based development environments. We can install the operator programmatically by creating a ~subscription~ resource:
+
+#+begin_src bash :results silent
+cat << EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: devspaces
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: devspaces
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+
+** Create devspaces controller
+
+Once the operator is installed we can create a devspaces controller instance, this will be what is actually responsible for instantiating new individual developer workspaces.
+
+Once again we can do this programmatically by creating a ~checluster~ resource:
+
+#+begin_src bash :results silent
+cat << EOF | oc apply -f -
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  name: devspaces
+  namespace: openshift-operators
+spec:
+  components:
+    cheServer:
+      debug: false
+      logLevel: INFO
+    dashboard: {}
+    database:
+      externalDb: false
+    devWorkspace: {}
+    devfileRegistry: {}
+    imagePuller:
+      enable: false
+      spec: {}
+    metrics:
+      enable: true
+    pluginRegistry: {}
+  containerRegistry: {}
+  devEnvironments:
+    containerBuildConfiguration:
+      openShiftSecurityContextConstraint: container-build
+    defaultNamespace:
+      autoProvision: true
+      template: <username>-devspaces
+    maxNumberOfWorkspacesPerUser: -1
+    secondsOfInactivityBeforeIdling: 36000
+    secondsOfRunBeforeIdling: -1
+    startTimeoutSeconds: 300
+    storage:
+      pvcStrategy: per-user
+  gitServices: {}
+  networking:
+    auth:
+      gateway:
+        configLabels:
+          app: che
+          component: che-gateway-config
+EOF
+#+end_src
+
+
+** Create individual dev space
+
+Once the dev workspace operator and controller are ready we can create our individual developer workspace.
+
+#+begin_src bash :results silent
+cat << EOF | oc apply -f -
+kind: DevWorkspace
+apiVersion: workspace.devfile.io/v1alpha2
+metadata:
+  name: vscode
+  namespace: opentlc-mgr-devspaces
+spec:
+  started: true
+  template:
+    projects:
+      - name: talks
+        git:
+          remotes:
+            origin: "https://github.com/jmhbnz/talks.git"
+    components:
+      - name: dev
+        container:
+          image: quay.io/devfile/universal-developer-image:latest
+    commands:
+      - id: install-roxctl
+        exec:
+          component: dev
+          commandLine: curl -O https://mirror.openshift.com/pub/rhacs/assets/4.1.2/bin/Linux/roxctl && chmod +x roxctl
+          workingDir: ${PROJECT_SOURCE}
+  contributions:
+    - name: che-code
+      uri: https://eclipse-che.github.io/che-plugin-registry/main/v3/plugins/che-incubator/che-code/latest/devfile.yaml
+      components:
+        - name: che-code-runtime-description
+          container:
+            env:
+              - name: CODE_HOST
+                value: 0.0.0.0
+EOF
+#+end_src
+
+
+** Deploy sample application
+
+In order to showcase incorporating ~roxctl~ into developer workflows we need a sample application to tinker with.
