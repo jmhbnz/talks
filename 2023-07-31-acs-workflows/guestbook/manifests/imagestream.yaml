@@ -1,0 +1,17 @@
+---
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+metadata:
+  annotations:
+    app.openshift.io/vcs-ref: main
+    app.openshift.io/vcs-uri: 'https://github.com/jmhbnz/talks.git'
+  name: guestbook
+  namespace: guestbook
+  labels:
+    app.kubernetes.io/component: guestbook
+    app.kubernetes.io/instance: guestbook
+    app.kubernetes.io/name: guestbook
+    app.kubernetes.io/part-of: guestbook
+spec:
+  lookupPolicy:
+    local: false

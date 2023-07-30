@@ -1,0 +1,43 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: guestbook-initial
+  namespace: guestbook
+  labels:
+    app.kubernetes.io/instance: guestbook
+    app.kubernetes.io/name: guestbook
+    operator.tekton.dev/operand-name: openshift-pipelines-addons
+    pipeline.openshift.io/strategy: docker
+    pipeline.openshift.io/type: kubernetes
+    tekton.dev/pipeline: guestbook
+spec:
+  params:
+    - name: APP_NAME
+      value: guestbook
+    - name: GIT_REPO
+      value: 'https://github.com/jmhbnz/talks.git'
+    - name: GIT_REVISION
+      value: main
+    - name: IMAGE_NAME
+      value: 'image-registry.openshift-image-registry.svc:5000/guestbook/guestbook'
+    - name: PATH_CONTEXT
+      value: 2023-07-31-acs-workflows/guestbook
+  pipelineRef:
+    name: guestbook
+  serviceAccountName: pipeline
+  timeout: 1h0m0s
+  workspaces:
+    - name: workspace
+      volumeClaimTemplate:
+        metadata:
+          creationTimestamp: null
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+          storageClassName: gp3-csi
+          volumeMode: Filesystem
+        status: {}

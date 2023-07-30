@@ -4,7 +4,7 @@ COPY go.mod /guestbook/
 COPY go.sum /guestbook/
 RUN cd /guestbook && go build
 
-FROM docker.io/ubuntu:latest
+FROM docker.io/ubuntu:jammy-20230522
 
 COPY --from=builder /guestbook/guestbook /app/guestbook
 
