@@ -69,7 +69,9 @@ spec:
         - name: rox_central_endpoint
           value: roxsecrets
         - name: output_format
-          value: pretty
+          value: json
+      runAfter:
+        - build
       taskRef:
         kind: ClusterTask
         name: rox-image-scan
@@ -81,6 +83,8 @@ spec:
           value: roxsecrets
         - name: rox_central_endpoint
           value: roxsecrets
+      runAfter:
+        - image-scan
       taskRef:
         kind: ClusterTask
         name: rox-image-check
@@ -89,7 +93,7 @@ spec:
         - name: SCRIPT
           value: oc rollout status deploy/$(params.APP_NAME)
       runAfter:
-        - build
+        - image-check
       taskRef:
         kind: ClusterTask
         name: openshift-client
