@@ -1,0 +1,128 @@
+#+TITLE: ROSA Ruby On Rails Workshop
+#+AUTHOR: James Blair, Shawn Gerrard
+#+DATE: <2023-08-18 Fri 13:30>
+
+* Introduction
+
+This document captures the setup steps for a 90-minute, hands-on Ruby On Rails workshop on Openshift.
+
+Within the session, participants will:
+ - Work with a Ruby codebase in Bitbucket.
+ - Deploy the application on Openshift.
+ - Create continuous delivery pipelines with Tekton.
+
+* Pre-requisites
+
+ This guide assumes you have an existing Openshift 4.10+ cluster with cluster admin permissions.
+
+* 1 - Preparing the cluster
+
+1. Log in to the cluster in your terminal with the ~oc~ cli.
+
+   #+begin_src bash
+oc login --server <URL> --token <TOKEN>
+   #+end_src
+
+* 2 - Deploy Bitbucket
+
+Now that we're logged into the cluster, let's create the namespace to deploy Bitbucket into.
+
+#+begin_src bash :results output
+oc new-project bitbucket
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Already on project "bitbucket" on server "https://api.rosa-7lpn7.2pqm.p1.openshiftapps.com:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app rails-postgresql-example
+
+to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=k8s.gcr.io/e2e-test-images/agnhost:2.33 -- /agnhost serve-hostname
+
+#+end_example
+
+Once the namespace is created we can deploy Bitbucket using the official Bitbucket image from Atlassian.
+
+#+begin_src bash :results output
+oc new-app --image docker.io/atlassian/bitbucket-server --name bitbucket
+#+end_src
+
+#+RESULTS:
+#+begin_example
+--> Found container image 525a6bc (3 days old) from docker.io for "docker.io/atlassian/bitbucket-server"
+
+    ,* An image stream tag will be created as "bitbucket:latest" that will track this image
+
+--> Creating resources ...
+    imagestream.image.openshift.io "bitbucket" created
+    deployment.apps "bitbucket" created
+    service "bitbucket" created
+--> Success
+    Application is not exposed. You can expose services to the outside world by executing one or more of the commands below:
+     'oc expose service/bitbucket'
+    Run 'oc status' to view your app.
+#+end_example
+
+Now, let's verify that the Bitbucket pod started successfully.
+
+#+begin_src bash :results output
+oc get pods --namespace bitbucket
+
+#+end_src
+
+#+RESULTS:
+: NAME                         READY   STATUS    RESTARTS   AGE
+: bitbucket-56d9849bbf-7922z   1/1     Running   0          2m36s
+
+As this is running successfully, let's expose it with a ~route~ so that we can access it from our web browser.
+
+#+begin_src bash :results output
+oc create route edge bitbucket --service=bitbucket --port=7990
+oc get route --namespace bitbucket
+#+end_src
+
+#+RESULTS:
+: route.route.openshift.io/bitbucket created
+: NAME        HOST/PORT                                                       PATH   SERVICES    PORT   TERMINATION   WILDCARD
+: bitbucket   bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com          bitbucket   7990   edge          None
+
+Once we open the Bitbucket route in our browser, we need to follow a short setup process manually before we can continue with the rest of our automation.
+
+ 1. Select your language ~English~.
+ 2. Select ~internal~ and click ~Next~.
+
+You'll then be prompted for an Atlassian license key. For the purposes of this workshop, we'll be generating a new trial license [[https://my.atlassian.com/license/evaluation][here]].
+
+Copy the ~Server ID~ into the Bitbucket setup screen and click ~Generate License~.
+
+Copy the generated license key into the text box for the Bitbucket license key and click ~Next~.
+
+On the Bitbucket setup screen enter details for your administrative user and click ~Go to Bitbucket~.
+
+* 3 - Configure Bitbucket
+
+With our Bitbucket server successfully deployed, let's configure it for the workshop.
+
+First step is to create additional users.
+
+#+begin_src bash :results output
+source .env
+for user in 1 2; do
+  bitbucket_route=$(oc get route --namespace bitbucket | awk '{print $2}'  | tail -n 1)
+
+echo curl -v --user "admin:${bitbucket_password}" \
+       --request "POST" \
+       --location \
+       --header "'application/x-www-form-urlencoded'" \
+       --data-raw "username=user${user}&fullname=user${user}&email=user${user}%40example.com&password=${bitbucket_user_password}&confirmPassword=${bitbucket_user_password}"
+https://${bitbucket_route}/rest/api/latest/admin/users?Create"
+
+        name=user${user}&password=${bitbucket_user_password}&displayName=user${user}&emailAddress=user${user}%40example.com" \
+       2>&1
+done
+#+end_src
+
