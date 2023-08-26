@@ -4,16 +4,18 @@
 
 * Introduction
 
-This document captures the setup steps for a 90-minute, hands-on Ruby On Rails workshop on Openshift.
+This document captures the setup steps for a 90-minute, hands-on [[https://rubyonrails.org/][Ruby On Rails]] workshop on [[https://www.redhat.com/en/technologies/cloud-computing/openshift][Openshift]].
 
 Within the session, participants will:
- - Work with a Ruby codebase in Bitbucket.
+ - Work with a Ruby codebase in [[https://bitbucket.org/product/][Bitbucket]].
  - Deploy the application on Openshift.
- - Create continuous delivery pipelines with Tekton.
+ - Create continuous delivery pipelines with [[https://tekton.dev/docs/][Tekton]].
 
 * Pre-requisites
 
  This guide assumes you have an existing Openshift 4.10+ cluster with cluster admin permissions.
+
+ In my case I have a Red Hat OpenShift on AWS (ROSA) cluster provisioned
 
 * 1 - Preparing the cluster
 
@@ -48,7 +50,7 @@ to build a new example application in Ruby. Or use kubectl to deploy a simple Ku
 Once the namespace is created we can deploy Bitbucket using the official Bitbucket image from Atlassian.
 
 #+begin_src bash :results output
-oc new-app --image docker.io/atlassian/bitbucket-server --name bitbucket
+oc --namespace bitbucket new-app --image docker.io/atlassian/bitbucket-server --name bitbucket
 #+end_src
 
 #+RESULTS:
@@ -70,7 +72,7 @@ oc new-app --image docker.io/atlassian/bitbucket-server --name bitbucket
 Now, let's verify that the Bitbucket pod started successfully.
 
 #+begin_src bash :results output
-oc get pods --namespace bitbucket
+oc --namespace bitbucket get pods
 
 #+end_src
 
@@ -81,8 +83,8 @@ oc get pods --namespace bitbucket
 As this is running successfully, let's expose it with a ~route~ so that we can access it from our web browser.
 
 #+begin_src bash :results output
-oc create route edge bitbucket --service=bitbucket --port=7990
-oc get route --namespace bitbucket
+oc --namespace bitbucket create route edge bitbucket --service=bitbucket --port=7990
+oc --namespace bitbucket get route
 #+end_src
 
 #+RESULTS:
@@ -109,20 +111,41 @@ With our Bitbucket server successfully deployed, let's configure it for the work
 
 First step is to create additional users.
 
-#+begin_src bash :results output
+#+begin_src bash :results none
 source .env
-for user in 1 2; do
+for user in {1..30}; do
   bitbucket_route=$(oc get route --namespace bitbucket | awk '{print $2}'  | tail -n 1)
 
-echo curl -v --user "admin:${bitbucket_password}" \
-       --request "POST" \
-       --location \
-       --header "'application/x-www-form-urlencoded'" \
-       --data-raw "username=user${user}&fullname=user${user}&email=user${user}%40example.com&password=${bitbucket_user_password}&confirmPassword=${bitbucket_user_password}"
-https://${bitbucket_route}/rest/api/latest/admin/users?Create"
+  echo curl --user "admin:${bitbucket_password}" \
+            --header "'Content-Type: application/json'" \
+            --data  ""
+       "\"https://${bitbucket_route}/rest/api/latest/admin/users?name=user${user}&displayName=user${user}&emailAddress=user${user}%40example.com&password=${bitbucket_user_password}\"" >> users.sh
 
-        name=user${user}&password=${bitbucket_user_password}&displayName=user${user}&emailAddress=user${user}%40example.com" \
-       2>&1
+  cat users.sh
 done
+chmod +x users.sh && ./users.sh && rm users.sh
 #+end_src
 
+
+Each of these users will be forking a copy of a Ruby on Rails codebase, so let's now create that codebase now.
+
+#+begin_src bash :results none
+source .env
+bitbucket_route=$(oc get route --namespace bitbucket | awk '{print $2}'  | tail -n 1)
+echo curl --user "admin:${bitbucket_password}" \
+          --header "'Content-Type: application/json'" \
+          --data "'{ \"key\": \"MSD\", \"name\": \"Rails Team\", \"description\": \"Rails!\"}'" \
+          "https://${bitbucket_route}/rest/api/latest/projects" > project.sh
+
+echo curl --user "admin:${bitbucket_password}" \
+          --header "'Content-Type: application/json'" \
+          --data "'{\"name\": \"openstreetmap-website\",\"scmId\": \"git\", \"forkable\": true, \"public\": true }'" \
+          "https://${bitbucket_route}/rest/api/latest/projects/${project_key}/repos" >> project.sh
+
+chmod +x project.sh && ./project.sh && rm project.sh
+
+git clone https://github.com/openstreetmap/openstreetmap-website.git
+cd openstreetmap-website
+git remote set-url origin "https://admin:${bitbucket_password}@${bitbucket_route}/scm/msd/openstreetmap-website.git"
+git push -u origin HEAD:master && cd ../ && rm -rf openstreetmap-website
+#+end_src
