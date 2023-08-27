@@ -8,24 +8,26 @@ Welcome to the OpenShift Ruby on Rails Workshop!
 
 The workshop provides ruby developers an introduction to OpenShift and containers, and how these can be used to build fully automated end-to-end continuos integration and deployment pipelines for Ruby on Rails applications.
 
+
+
+
 * Agenda
 
-1. Introduction to containers & kubernetes
+| # | Topic                                    | How                            | Time allocated | Section link |
+|---|------------------------------------------|--------------------------------|----------------|--------------|
+| 1 | Introduction to containers & kubernetes  | Facilitator led, group session | 10m            | [[#1-introduction-to-containers--kubernetes][Link]]         |
+| 2 | Exploring openshift application platform | Facilitator led, group session | 10m            | [[#2-exploring-openshift-application-platform][Link]]         |
+| 3 | Setting up your development environment  | Individual, hands on excercise | 10m            | [[#3. Setting up your development environment][Link]]         |
+| 4 | Deploying a ruby application             | Individual, hands on excercise | 20m            | [[#4. Deploying a ruby application ][Link]]         |
+| 5 | Creating a deployment pipeline           | Individual, hands on excercise | 20m            | [[#5. Creating a deployment pipeline ][Link]]         |
+| 6 | Developing & deploying a new feature     | Individual, hands on excercise | 20m            | [[#6. Developing & deploying a new feature ][Link]]         |
 
-2. Exploring openshift application platform
 
-3. Setting up our development environment
-
-4. Deploying a ruby application
-
-5. Creating a deployment pipeline
-
-6. Developing & deploying a new feature
 
 
 * 1. Introduction to containers & kubernetes
 
-Before we can get hands on with the workshop, let's pause for a moment and make sure we have an understanding of both [[https://www.redhat.com/en/topics/containers][containers]] and [[https://www.redhat.com/en/topics/containers/what-is-kubernetes][kubernetes]].
+Before we can get hands on with the workshop, let's make sure we have an understanding of both [[https://www.redhat.com/en/topics/containers][containers]] and [[https://www.redhat.com/en/topics/containers/what-is-kubernetes][kubernetes]].
 
 
 ** What are containers?
@@ -45,6 +47,8 @@ You can also easily move the containerized application between public, private a
 [[https://www.redhat.com/en/topics/containers/whats-a-linux-container][Continue reading →]]
 
 
+
+
 ** Why are containers important?
 
 Containers help reduce conflicts between your development and operations teams by separating areas of responsibility. Developers can focus on their apps and operations teams can focus on the infrastructure. And, because containers are based on open source technology, you get the latest and greatest advancements as soon as they’re available.
@@ -54,6 +58,8 @@ Container technologies—including [[https://www.redhat.com/en/topics/containers
 Containers share the same operating system kernel and isolate the application processes from the rest of the system so the whole thing can be moved, opened, and used across development, testing, and production configurations.
 
 Because they are lightweight and portable, containers provide the opportunity for faster development and meeting business needs as they arise.
+
+
 
 
 ** What is kubernetes?
@@ -71,6 +77,8 @@ Red Hat was one of the first companies to work with Google on Kubernetes, even p
 [[./images/kubernetes-diagram.svg]]
 
 
+
+
 * 2. Exploring openshift application platform
 
 Now that we have refreshed on containers and kubernetes, let's take a tour through the OpenShift application platform from the perspective of a developer.
@@ -78,6 +86,8 @@ Now that we have refreshed on containers and kubernetes, let's take a tour throu
 ** Web console developer view
 
 The first stop on our tour will be the Web consoler "Developer View".
+
+
 
 
 ** Web console terminal
