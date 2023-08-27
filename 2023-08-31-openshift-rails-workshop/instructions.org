@@ -85,8 +85,15 @@ Now that we have refreshed on containers and kubernetes, let's take a tour throu
 
 ** Web console developer view
 
-The first stop on our tour will be the Web consoler "Developer View".
+The first stop on our tour will be the Web console "Developer View". In order to move quickly with containers, developers need to be able to use the benefits of Kubernetes without being required to develop a platform engineering skillset. Taking time from development cycles to learn, install, and manage infrastructure tools is not helping get business applications to market.
 
+Red Hat OpenShift has a specifically designed developer view so that you can make the most of the platform, without having to get bogged down learning kubernetes.
+
+Within developer view you can see a graphical topology for your application, check application logs or observability metrics, scale applications, restart deployments, review pipelines and much more.
+
+[[https://www.redhat.com/en/blog/openshift-topology-view-milestone-towards-better-developer-experience][More on developer view →]]
+
+[[./images/topology-view.gif]]
 
 
 
@@ -95,3 +102,10 @@ The first stop on our tour will be the Web consoler "Developer View".
 Sometimes you just need to quickly drop into a terminal to get something done. With the OpenShift Web Terminal you don't need to leave your browser or worry about logging in at a local terminal!
 
 [[./images/web-terminal.gif]]
+
+
+** Quick add for new applications
+
+Want to quickly test a proof of concept or spin up a container? Awesome, within developer view in OpenShift you can quickly add a new application directly from git, from an existing image, from a Dockerfile, a yaml manifest, or a catalog of templated services.
+
+[[./images/add-application.png]]
