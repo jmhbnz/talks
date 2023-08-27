@@ -1,0 +1,23 @@
+#+AUTHOR: James Blair
+#+DATE: <2023-08-27 Sun 17:15>
+
+
+[[./images/header.jpg]]
+
+Welcome to the OpenShift Ruby on Rails Workshop!
+
+The workshop provides ruby developers an introduction to OpenShift and containers, and how these can be used to build fully automated end-to-end continuos integration and deployment pipelines for Ruby on Rails applications.
+
+* Agenda
+
+1. Introduction to containers & kubernetes
+
+2. Exploring openshift application platform
+
+3. Setting up our development environment
+
+4. Deploying a ruby application
+
+5. Creating a deployment pipeline
+
+6. Developing & deploying a new feature
