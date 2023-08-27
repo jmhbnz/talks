@@ -21,3 +21,51 @@ The workshop provides ruby developers an introduction to OpenShift and container
 5. Creating a deployment pipeline
 
 6. Developing & deploying a new feature
+
+
+* Introduction to containers & kubernetes
+
+Before we can get hands on with the workshop, let's pause for a moment and make sure we have an understanding of both [[https://www.redhat.com/en/topics/containers][containers]] and [[https://www.redhat.com/en/topics/containers/what-is-kubernetes][kubernetes]].
+
+
+** What are containers?
+
+Containers are technologies that allow the packaging and isolation of applications with their entire runtime environment—all of the files necessary to run. This makes it easy to move the contained application between environments (~dev~, ~test~, ~production~, etc.) while retaining full functionality.
+
+[[./images/virtualization-vs-containers.png]]
+
+What does this mean? For starters, virtualization uses a hypervisor to emulate hardware, which allows multiple operating systems to run side by side. This isn’t as lightweight as using containers.
+
+When you have finite resources with finite capabilities, you need lightweight apps that can be densely deployed. Linux containers run natively on the operating system, sharing it across all of your containers, so your apps and services stay lightweight and run swiftly in parallel.
+
+Containers are also an important part of IT security. By [[https://www.redhat.com/en/topics/security/container-security][building security into the container pipeline]], containers stay reliable, scalable, and trusted.
+
+You can also easily move the containerized application between public, private and hybrid cloud environments and data centers (or on-premises) with consistent behavior and functionality.
+
+[[https://www.redhat.com/en/topics/containers/whats-a-linux-container][Continue reading →]]
+
+
+** Why are containers important?
+
+Containers help reduce conflicts between your development and operations teams by separating areas of responsibility. Developers can focus on their apps and operations teams can focus on the infrastructure. And, because containers are based on open source technology, you get the latest and greatest advancements as soon as they’re available.
+
+Container technologies—including [[https://www.redhat.com/en/topics/containers/what-is-podman][Podman]], [[https://www.redhat.com/en/topics/containers/what-is-skopeo][Skopeo]], [[https://www.redhat.com/en/topics/containers/what-is-buildah][Buildah]], [[http://thenewstack.io/cri-o-make-kubernetes-center-container-ecosystem/][CRI-O]], [[https://www.redhat.com/en/topics/containers/what-is-kubernetes][Kubernetes]], and [[https://www.redhat.com/en/topics/containers/what-is-docker][Docker]] — help your team simplify, speed up, and orchestrate application development and deployment.
+
+Containers share the same operating system kernel and isolate the application processes from the rest of the system so the whole thing can be moved, opened, and used across development, testing, and production configurations.
+
+Because they are lightweight and portable, containers provide the opportunity for faster development and meeting business needs as they arise.
+
+
+** What is kubernetes?
+
+Kubernetes (also known as ~k8s~ or "kube") is an open source container orchestration platform that automates many of the manual processes involved in deploying, managing, and scaling containerized applications.
+
+You can cluster together groups of hosts running Linux® containers, and Kubernetes helps you easily and efficiently manage those clusters.
+
+[[https://www.redhat.com/en/topics/containers/what-is-a-kubernetes-cluster][Kubernetes clusters]] can span hosts across on-premise, public, private, or hybrid clouds. For this reason, Kubernetes is an ideal platform for hosting cloud-native applications that require rapid scaling.
+
+Kubernetes was originally developed and designed by engineers at Google. Google was one of the early contributors to Linux container technology.
+
+Red Hat was one of the first companies to work with Google on Kubernetes, even prior to launch, and has become the [[https://www.stackalytics.com/cncf?module=kubernetes][2nd leading contributor]] to the Kubernetes upstream project. Google donated the Kubernetes project to the newly formed [[https://www.cncf.io/][Cloud Native Computing Foundation]] (CNCF) in 2015.
+
+[[./images/kubernetes-diagram.svg]]
