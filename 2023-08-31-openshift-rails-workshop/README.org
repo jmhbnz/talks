@@ -176,3 +176,27 @@ EOF
 
 #+RESULTS:
 : subscription.operators.coreos.com/openshift-pipelines-operator created
+
+
+* 5 - Install openshift web terminal operator
+
+Another helpful operator that we will use during the workshop is the [[https://cloud.redhat.com/blog/a-deeper-look-at-the-web-terminal-operator-1][OpenShift Web Terminal]]. This is a handy way to access a terminal directly within the OpenShift Web Console.
+
+#+begin_src bash :results output
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: web-terminal
+  namespace: openshift-operators
+spec:
+  channel: fast
+  installPlanApproval: Automatic
+  name: web-terminal
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS:
+: subscription.operators.coreos.com/web-terminal created

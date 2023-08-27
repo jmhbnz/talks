@@ -23,7 +23,7 @@ The workshop provides ruby developers an introduction to OpenShift and container
 6. Developing & deploying a new feature
 
 
-* Introduction to containers & kubernetes
+* 1. Introduction to containers & kubernetes
 
 Before we can get hands on with the workshop, let's pause for a moment and make sure we have an understanding of both [[https://www.redhat.com/en/topics/containers][containers]] and [[https://www.redhat.com/en/topics/containers/what-is-kubernetes][kubernetes]].
 
@@ -69,3 +69,19 @@ Kubernetes was originally developed and designed by engineers at Google. Google 
 Red Hat was one of the first companies to work with Google on Kubernetes, even prior to launch, and has become the [[https://www.stackalytics.com/cncf?module=kubernetes][2nd leading contributor]] to the Kubernetes upstream project. Google donated the Kubernetes project to the newly formed [[https://www.cncf.io/][Cloud Native Computing Foundation]] (CNCF) in 2015.
 
 [[./images/kubernetes-diagram.svg]]
+
+
+* 2. Exploring openshift application platform
+
+Now that we have refreshed on containers and kubernetes, let's take a tour through the OpenShift application platform from the perspective of a developer.
+
+** Web console developer view
+
+The first stop on our tour will be the Web consoler "Developer View".
+
+
+** Web console terminal
+
+Sometimes you just need to quickly drop into a terminal to get something done. With the OpenShift Web Terminal you don't need to leave your browser or worry about logging in at a local terminal!
+
+[[./images/web-terminal.gif]]
