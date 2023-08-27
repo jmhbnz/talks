@@ -19,11 +19,12 @@ Within the session, participants will:
 
 * 1 - Preparing the cluster
 
-1. Log in to the cluster in your terminal with the ~oc~ cli.
+To get start let's ensure we are logged in to the cluster in our terminal with the ~oc~ cli.
 
-   #+begin_src bash
+#+begin_src bash
 oc login --server <URL> --token <TOKEN>
-   #+end_src
+#+end_src
+
 
 * 2 - Deploy Bitbucket
 
@@ -105,6 +106,7 @@ Copy the generated license key into the text box for the Bitbucket license key a
 
 On the Bitbucket setup screen enter details for your administrative user and click ~Go to Bitbucket~.
 
+
 * 3 - Configure Bitbucket
 
 With our Bitbucket server successfully deployed, let's configure it for the workshop.
@@ -149,3 +151,28 @@ cd openstreetmap-website
 git remote set-url origin "https://admin:${bitbucket_password}@${bitbucket_route}/scm/msd/openstreetmap-website.git"
 git push -u origin HEAD:master && cd ../ && rm -rf openstreetmap-website
 #+end_src
+
+
+* 4 - Install openshift pipelines operator
+
+Once bitbucket is installed and is setup with the users and codebase our workshop will use lets install the [[https://docs.openshift.com/container-platform/4.10/cicd/pipelines/understanding-openshift-pipelines.html][OpenShift Pipelines]] operator so our workshop participants will be able to create and run Tekton CI/CD pipelines during the workshop.
+
+The first step for installing the operator  is to create a subscription
+
+#+begin_src bash :results output
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-pipelines-operator
+  namespace: openshift-operators
+spec:
+  channel: latest
+  name: openshift-pipelines-operator-rh
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS:
+: subscription.operators.coreos.com/openshift-pipelines-operator created
