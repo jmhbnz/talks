@@ -129,3 +129,14 @@ Use the credentials provided on the workshop etherpad to login.
 Once logged in you should be able to view and create a fork of the ~Rails Team/openstreetmap-website~ repository to your own user using this link: [[https://bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com/projects/MSD/repos/openstreetmap-website?fork]]
 
 [[./images/bitbucket-fork.png]]
+
+
+** Log into openshift web console
+
+Once we have our individual code fork created let's log into the OpenShift web console using the link [[https://console-openshift-console.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com]].
+
+Use the credentials provided on the workshop etherpad to login.
+
+[[./images/openshift-login.png]]
+
+Once logged in feel free to repeat the OpenShift tour we went through as a group in section two to get more comfortable with the user interface.
