@@ -109,3 +109,23 @@ Sometimes you just need to quickly drop into a terminal to get something done. W
 Want to quickly test a proof of concept or spin up a container? Awesome, within developer view in OpenShift you can quickly add a new application directly from git, from an existing image, from a Dockerfile, a yaml manifest, or a catalog of templated services.
 
 [[./images/add-application.png]]
+
+
+* 3. Setting up your development environment
+
+For our first hands on excercise let's get logged into the tools we'll be using today and get familar with each.
+
+
+** Log into bitbucket and fork codebase
+
+For this workshop we will be using a [[https://www.atlassian.com/software/bitbucket/enterprise][Bitbucket]] server as our ~git~ source control management tooling. The server is running on the same OpenShift cluster we will be using for the hands on excercises and can be accessed with the link below:
+
+[[https://bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com]]
+
+Use the credentials provided on the workshop etherpad to login.
+
+[[./images/bitbucket-login.png]]
+
+Once logged in you should be able to view and create a fork of the ~Rails Team/openstreetmap-website~ repository to your own user using this link: [[https://bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com/projects/MSD/repos/openstreetmap-website?fork]]
+
+[[./images/bitbucket-fork.png]]
