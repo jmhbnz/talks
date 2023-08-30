@@ -137,7 +137,7 @@ For this workshop we will be using a [[https://www.atlassian.com/software/bitbuc
 
 https://bitbucket-bitbucket.apps.rosa-zc2fk.nhwo.p1.openshiftapps.com
 
-Use the credentials provided on the workshop etherpad to login.
+Use the credentials provided on the workshop slides to login.
 
 [[./images/bitbucket-login.png]]
 
@@ -152,7 +152,7 @@ Ensure you make your fork public after creation as shown below:
 
 Once we have our individual code fork created let's log into the OpenShift web console using the link [[https://console-openshift-console.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com]].
 
-Use the credentials provided on the workshop etherpad to login.
+Use the credentials provided on the workshop slides to login.
 
 [[./images/openshift-login.png]]
 
@@ -173,10 +173,12 @@ With S2I, deploying a Ruby app becomes easy – it detects your app's dependenci
 2) Click on the ~Import from Git~ tile in your add menu.
 3) Enter the repo-url for your repository fork.
 4) Select the ~Ruby~ S2i builder image.
-5) Enter ~rails-example~ in Name field.
+5) Enter ~rails-example~ in ~Name~ field.
 6) Click create button and you will be redirected to ~Topology~ screen.
 7) Click on ~rails-example~ application to see check the progress of the build (this should take roughly 2 minutes).
 8) Click the route once the pod is ~Running~, the application ui should display.
+
+[[./images/import-git.gif]]
 
 
 ** Using the command line to import from git deploy
