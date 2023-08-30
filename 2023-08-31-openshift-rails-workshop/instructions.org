@@ -111,6 +111,14 @@ Want to quickly test a proof of concept or spin up a container? Awesome, within 
 [[./images/add-application.png]]
 
 
+** Visual pipeline builder
+
+OpenShift Pipelines (based on Tekton) make creating cloud native pipelines on OpenShift easy. There is a pipeline web interface built into the OpenShift web console so you don't need to login to another system and switch contexts to be able to interact with your pipelines.
+
+[[./images/openshift-pipelines.gif]]
+
+
+
 * 3. Setting up your development environment
 
 For our first hands on excercise let's get logged into the tools we'll be using today and get familar with each.
@@ -126,7 +134,7 @@ Use the credentials provided on the workshop etherpad to login.
 
 [[./images/bitbucket-login.png]]
 
-Once logged in you should be able to view and create a fork of the ~Rails Team/openstreetmap-website~ repository to your own user using this link: [[https://bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com/projects/MSD/repos/openstreetmap-website?fork]]
+Once logged in you should be able to view and create a fork of the ~Rails Team/rails-example~ repository to your own user using this link: [[https://bitbucket-bitbucket.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com/projects/MSD/repos/rails-example?fork]]
 
 [[./images/bitbucket-fork.png]]
 
@@ -139,4 +147,68 @@ Use the credentials provided on the workshop etherpad to login.
 
 [[./images/openshift-login.png]]
 
-Once logged in feel free to repeat the OpenShift tour we went through as a group in section two to get more comfortable with the user interface.
+Once logged in, feel free to repeat the OpenShift tour we went through as a group in section two to get more comfortable with the user interface.
+
+
+* 4. Deploying a ruby application
+
+Now that we are logged into our environment let's move on to deplying the ~rails-example~ codebase we forked earlier, onto OpenShift. We'll do this in two different ways:
+
+** User the web interface to import from git and deploy
+ 1) Create a project bu clicking +Add > Create Project > Enter Project name (i.e. userXX)
+ 2) Click on the ~Import from Git~ tile in your add menu.
+ 3) Enter the repo-url for your repository fork.
+ 4) Click on the ~Ruby~ on Builder Image.
+ 5) Enter ~rails-example~ in Name field.
+ 6) Click create button and you will be redirected to ~Topology~ screen.
+ 7) Click on ~rails-example~ application to see check the progress of the build (this should take roughly 2 minutes).
+ 8) Click the route once the pod is ~Running~
+
+** Using the command line to import from git deploy
+
+1) Click on the web terminal ~>_~ icon in the top right corner of the web console.
+2) A terminal will pop up in the bottom of the window, this can sometimes take a minute or two to start.
+3) Copy the following command into the termuinal and press ~Enter~.
+
+   #+begin_src bash :results output
+oc --namespace user1 new-app --name rails-cli centos/ruby-25-centos7~https://github.com/sclorg/ruby-ex.git
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   --> Found container image e96bd99 (2 years old) from Docker Hub for "centos/ruby-25-centos7"
+
+       Ruby 2.5
+       --------
+       Ruby 2.5 available as container is a base platform for building and running various Ruby 2.5 applications and frameworks. Ruby is the interpreted scripting language for quick and easy object-oriented programming. It has many features to process text files and to do system management tasks (as in Perl). It is simple, straight-forward, and extensible.
+
+       Tags: builder, ruby, ruby25, rh-ruby25
+
+       ,* An image stream tag will be created as "ruby-25-centos7:latest" that will track the source image
+       ,* A source build using source code from https://github.com/sclorg/ruby-ex.git will be created
+         ,* The resulting image will be pushed to image stream tag "rails-cli:latest"
+         ,* Every time "ruby-25-centos7:latest" changes a new build will be triggered
+
+   --> Creating resources ...
+       imagestream.image.openshift.io "ruby-25-centos7" created
+       imagestream.image.openshift.io "rails-cli" created
+       buildconfig.build.openshift.io "rails-cli" created
+       deployment.apps "rails-cli" created
+       service "rails-cli" created
+   --> Success
+       Build scheduled, use 'oc logs -f buildconfig/rails-cli' to track its progress.
+       Application is not exposed. You can expose services to the outside world by executing one or more of the commands below:
+        'oc expose service/rails-cli'
+       Run 'oc status' to view your app.
+   #+end_example
+
+   4) Let's open the web console again and we should now see another application pod in our topology view!
+   5) Click on the pod, and open the route to see the application serving traffic.
+
+
+** Creating a tekton deployment pipeline for our app
+
+1) Click on "Pipelines" in the OpenShift web console developer view.
+2) Click on ~Create~ > ~Pipeline~ in the top right hand corner.
+3) Enter the name ~ruby-pipeline~.
+4) Click on ~Add task~, and type in ~clone~, then select ~git-clone~ from Red Hat and click ~Add~.
