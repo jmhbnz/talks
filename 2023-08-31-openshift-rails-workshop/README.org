@@ -38,7 +38,7 @@ oc new-project bitbucket
 
 #+RESULTS:
 #+begin_example
-Now using project "bitbucket" on server "https://api.cluster-dkxhl.dkxhl.sandbox1652.opentlc.com:6443".
+Now using project "bitbucket" on server "https://api.rosa-zc2fk.nhwo.p1.openshiftapps.com:6443".
 
 You can add applications to this project with the 'new-app' command. For example, try:
 
@@ -129,8 +129,8 @@ oc --namespace bitbucket get route
 
 #+RESULTS:
 : route.route.openshift.io/bitbucket created
-: NAME        HOST/PORT                                                              PATH   SERVICES    PORT   TERMINATION   WILDCARD
-: bitbucket   bitbucket-bitbucket.apps.cluster-dkxhl.dkxhl.sandbox1652.opentlc.com          bitbucket   7990   edge          None
+: NAME        HOST/PORT                                                       PATH   SERVICES    PORT   TERMINATION   WILDCARD
+: bitbucket   bitbucket-bitbucket.apps.rosa-zc2fk.nhwo.p1.openshiftapps.com          bitbucket   7990   edge          None
 
 Once we open the Bitbucket route in our browser, we need to follow a short setup process manually before we can continue with the rest of our automation.
 
@@ -277,3 +277,4 @@ EOF
 #+end_src
 
 #+RESULTS:
+: knativeserving.operator.knative.dev/knative-serving created
