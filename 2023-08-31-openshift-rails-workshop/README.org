@@ -117,8 +117,9 @@ First step is to create additional users.
 
 #+begin_src bash :results none
 source .env
+bitbucket_route=$(oc get route --namespace bitbucket | awk '{print $2}'  | tail -n 1)
+
 for user in {1..30}; do
-  bitbucket_route=$(oc get route --namespace bitbucket | awk '{print $2}'  | tail -n 1)
 
   echo curl --user "admin:${bitbucket_password}" \
             --header "'Content-Type: application/json'" \
@@ -143,15 +144,15 @@ echo curl --user "admin:${bitbucket_password}" \
 
 echo curl --user "admin:${bitbucket_password}" \
           --header "'Content-Type: application/json'" \
-          --data "'{\"name\": \"openstreetmap-website\",\"scmId\": \"git\", \"forkable\": true, \"public\": true }'" \
+          --data "'{\"name\": \"rails-example\",\"scmId\": \"git\", \"forkable\": true, \"public\": true }'" \
           "https://${bitbucket_route}/rest/api/latest/projects/${project_key}/repos" >> project.sh
 
 chmod +x project.sh && ./project.sh && rm project.sh
 
-git clone https://github.com/openstreetmap/openstreetmap-website.git
-cd openstreetmap-website
-git remote set-url origin "https://admin:${bitbucket_password}@${bitbucket_route}/scm/msd/openstreetmap-website.git"
-git push -u origin HEAD:master && cd ../ && rm -rf openstreetmap-website
+git clone https://github.com/sclorg/rails-ex.git
+cd rails-ex
+git remote set-url origin "https://admin:${bitbucket_password}@${bitbucket_route}/scm/msd/rails-example.git"
+git push -u origin HEAD:master && cd ../ && rm -rf rails-ex
 #+end_src
 
 
