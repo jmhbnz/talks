@@ -1,5 +1,5 @@
 #+TITLE: ROSA Ruby On Rails Workshop
-#+AUTHOR: James Blair, Shawn Gerrard
+#+AUTHOR: James Blair
 #+DATE: <2023-08-18 Fri 13:30>
 
 * Introduction
@@ -7,15 +7,17 @@
 This document captures the setup steps for a 90-minute, hands-on [[https://rubyonrails.org/][Ruby On Rails]] workshop on [[https://www.redhat.com/en/technologies/cloud-computing/openshift][Openshift]].
 
 Within the session, participants will:
+ - Gain an understanding of OpenShift and containers.
  - Work with a Ruby codebase in [[https://bitbucket.org/product/][Bitbucket]].
- - Deploy the application on Openshift.
+ - Deploy the application on Openshift using several methods.
  - Create continuous delivery pipelines with [[https://tekton.dev/docs/][Tekton]].
 
 * Pre-requisites
 
  This guide assumes you have an existing Openshift 4.10+ cluster with cluster admin permissions.
 
- In my case I have a Red Hat OpenShift on AWS (ROSA) cluster provisioned
+ In my case I have a Red Hat OpenShift on AWS (ROSA) cluster provisioned through the Red Hat [[https://demo.redhat.com][demo system]].
+
 
 * 1 - Preparing the cluster
 
@@ -200,3 +202,42 @@ EOF
 
 #+RESULTS:
 : subscription.operators.coreos.com/web-terminal created
+
+
+* 6 - Install openshift serverless operator
+
+For our final cluster setup task we will install the [[https://www.redhat.com/en/technologies/cloud-computing/openshift/serverless][OpenShift Serverless]] operator. We'll use this during the workshop to show just how easy it is to convert a traditional Ruby application deployment into a serverless scale to zero application.
+
+#+begin_src bash :results output
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: serverless-operator
+  namespace: openshift-operators
+spec:
+  channel: stable
+  name: serverless-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS:
+: subscription.operators.coreos.com/serverless-operator created
+
+
+Once the operator is installed we just need to enable ~knative~ serving.
+
+#+begin_src bash :results output
+cat << EOF | oc apply --filename -
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeServing
+metadata:
+    name: knative-serving
+    namespace: knative-serving
+EOF
+#+end_src
+
+#+RESULTS:
+: knativeserving.operator.knative.dev/knative-serving created
