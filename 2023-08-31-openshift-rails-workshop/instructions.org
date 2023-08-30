@@ -169,7 +169,7 @@ OpenShift's Source-to-Image (S2I) is a powerful tool that streamlines the deploy
 
 With S2I, deploying a Ruby app becomes easy – it detects your app's dependencies, assembles the necessary runtime environment, and produces a production-ready container image. This approach not only accelerates deployment but also ensures consistency and reliability across various environments, allowing you to focus on writing code without worrying about complex deployment configurations.
 
-1) Click the ~+Add~ button in developer view (or open https://console-openshift-console.apps.cluster-dkxhl.dkxhl.sandbox1652.opentlc.com/add)
+1) Click the ~+Add~ button in developer view (or open https://console-openshift-console.apps.rosa-zc2fk.nhwo.p1.openshiftapps.com/add)
 2) Click on the ~Import from Git~ tile in your add menu.
 3) Enter the repo-url for your repository fork.
 4) Select the ~Ruby~ S2i builder image.
@@ -192,12 +192,13 @@ To save time during todays workshop we won't be setting up our local terminal to
 3) Copy the following command into the termuinal and press ~Enter~.
 
 #+begin_src bash :results output
-oc --namespace user1 new-app --name rails-cli centos/ruby-25-centos7~https://github.com/sclorg/ruby-ex.git
+oc new-app --name rails-cli centos/ruby-25-centos7~<FORK_CLONE_URL>
 #+end_src
-
 
 4) Let's open the web console again and we should now see another application pod in our topology view!
 5) Click on the pod, and open the route to see the application serving traffic.
+
+[[./images/import-cli.gif]]
 
 
 * 5. Creating a tekton deployment pipeline for our app
