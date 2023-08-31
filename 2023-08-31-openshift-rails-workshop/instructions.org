@@ -150,7 +150,7 @@ Ensure you make your fork public after creation as shown below:
 
 ** Log into openshift web console
 
-Once we have our individual code fork created let's log into the OpenShift web console using the link [[https://console-openshift-console.apps.rosa-7lpn7.2pqm.p1.openshiftapps.com]].
+Once we have our individual code fork created let's log into the OpenShift web console using the link [[https://console-openshift-console.apps.rosa-zc2fk.nhwo.p1.openshiftapps.com]].
 
 Use the credentials provided on the workshop slides to login.
 
