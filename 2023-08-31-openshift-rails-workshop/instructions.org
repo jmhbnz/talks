@@ -17,10 +17,10 @@ The workshop provides ruby developers an introduction to OpenShift and container
 |---|------------------------------------------|--------------------------------|----------------|--------------|
 | 1 | Introduction to containers & kubernetes  | Facilitator led, group session | 10m            | [[#1-introduction-to-containers--kubernetes][Link]]         |
 | 2 | Exploring openshift application platform | Facilitator led, group session | 10m            | [[#2-exploring-openshift-application-platform][Link]]         |
-| 3 | Setting up your development environment  | Individual, hands on excercise | 10m            | [[#3. Setting up your development environment][Link]]         |
-| 4 | Deploying a ruby application             | Individual, hands on excercise | 20m            | [[#4. Deploying a ruby application ][Link]]         |
-| 5 | Creating a deployment pipeline           | Individual, hands on excercise | 20m            | [[#5. Creating a deployment pipeline ][Link]]         |
-| 6 | Making an application serverless         | Individual, hands on excercise | 20m            | [[#6. Developing & deploying a new feature ][Link]]         |
+| 3 | Setting up your development environment  | Individual, hands on excercise | 10m            | [[#3-setting-up-your-development-environment][Link]]         |
+| 4 | Deploying a ruby application             | Individual, hands on excercise | 20m            | [[#4-deploying-a-ruby-application ][Link]]         |
+| 5 | Creating a deployment pipeline           | Individual, hands on excercise | 20m            | [[#5-creating-a-deployment-pipeline ][Link]]         |
+| 6 | Making an application serverless         | Individual, hands on excercise | 20m            | [[#6-making-an-application-serverless ][Link]]         |
 
 
 
@@ -217,6 +217,9 @@ For this excercise though, lets create a new pipeline from scratch!
 8) Click on the newly added ~s2i-ruby~ task and enter ~image-registry.openshift-image-registry.svc:5000/userX/ruby-pipeline-app~ as the ~IMAGE~ field, making sure to replace the X your user number. Scroll down and select ~ruby-pipeline~ in the workspace dropdown.
 9) Click the ~+~ symbol that appears to the right of your ~s2i-ruby~ task when you hover over it. Click ~Add task~ on the new block in the pipeline and enter ~openshift-client~ from ~Red Hat~ and click ~Add~.
 10) Click on the newly added ~openshift-client~ task. Update the display name to ~deploy~, then set the ~script~ field to ~oc rollout status deployment/ruby-pipeline-app~ and click ~Create~.
+
+
+
 
 
 * 6. Making an application serverless
