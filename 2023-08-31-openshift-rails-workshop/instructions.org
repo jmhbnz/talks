@@ -20,7 +20,7 @@ The workshop provides ruby developers an introduction to OpenShift and container
 | 3 | Setting up your development environment  | Individual, hands on excercise | 10m            | [[#3. Setting up your development environment][Link]]         |
 | 4 | Deploying a ruby application             | Individual, hands on excercise | 20m            | [[#4. Deploying a ruby application ][Link]]         |
 | 5 | Creating a deployment pipeline           | Individual, hands on excercise | 20m            | [[#5. Creating a deployment pipeline ][Link]]         |
-| 6 | Developing & deploying a new feature     | Individual, hands on excercise | 20m            | [[#6. Developing & deploying a new feature ][Link]]         |
+| 6 | Making an application serverless         | Individual, hands on excercise | 20m            | [[#6. Developing & deploying a new feature ][Link]]         |
 
 
 
@@ -215,3 +215,19 @@ For this excercise though, lets create a new pipeline from scratch!
 6) Click on the newly added ~git-clone~ task and enter the clone url for the repository you forked in Bitbucket (note, ensure the Bitbucket repository is set to public in Bitbucket setttings).  Then scroll down and select ~ruby-pipeline~ in the workspace dropdown.
 7) Click the ~+~ symbol that appears to the right of your ~git-clone~ task when you hover over it. Click ~Add task~ on the new block in the pipeline and enter ~ruby~ in the search.  Select ~s2i-ruby~ from ~Red Hat~ and click ~Add~.
 8) Click on the newly added ~s2i-ruby~ task and enter ~image-registry.openshift-image-registry.svc:5000/userX/ruby-pipeline-app~ as the ~IMAGE~ field, making sure to replace the X your user number. Scroll down and select ~ruby-pipeline~ in the workspace dropdown.
+9) Click the ~+~ symbol that appears to the right of your ~s2i-ruby~ task when you hover over it. Click ~Add task~ on the new block in the pipeline and enter ~openshift-client~ from ~Red Hat~ and click ~Add~.
+10) Click on the newly added ~openshift-client~ task. Update the display name to ~deploy~, then set the ~script~ field to ~oc rollout status deployment/ruby-pipeline-app~ and click ~Create~.
+
+
+* 6. Making an application serverless
+
+So we've just deployed some applications to OpenShift, how about we make one of the a serverless application?  This is very simple to do thanks to [[https://www.redhat.com/en/technologies/cloud-computing/openshift/serverless][OpenShift Serverless]].
+
+1) Right click on your first deployment ~rails-example~ and click ~Make serverless~.
+2) Change the ~Name~ field to ~rails-example-serverless~.
+3) Click ~Create~.
+
+[[./images/serverless.gif]]
+
+4) Notice how our application automatically scales to zero after a minute of no traffic? These scaling options can be fully [[https://docs.openshift.com/serverless/1.29/knative-serving/autoscaling/serverless-autoscaling-developer-scale-bounds.html][configured]] as required for each application.
+5) Try visiting the route after the application scales to zero and notice how the application automatically scales back up to handle the traffic.
