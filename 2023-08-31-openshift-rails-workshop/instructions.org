@@ -201,11 +201,13 @@ oc new-app --name rails-cli centos/ruby-25-centos7~<FORK_CLONE_URL>
 [[./images/import-cli.gif]]
 
 
-* 5. Creating a tekton deployment pipeline for our app
+* 5. Creating a deployment pipeline for our app
 
 Now that we've explored some methods for deploying a ruby application. Let's create a full pipeline for deployments. We can actually generate basic pipelines automatically with a checkbox as we use the ~Import from git~ quick add feature in the web console.
 
-For this excercise though, lets create a new pipeline from scratch!
+OpenShift Pipelines are based on the upstream [[https://tekton.dev][tekton]] project.
+
+For this excercise, lets build some familiarity with tekton by creating a new pipeline from scratch!
 
 1) Click on ~Pipelines~ in the OpenShift web console developer view.
 2) Click on ~Create~ > ~Pipeline~ in the top right hand corner.
@@ -216,10 +218,9 @@ For this excercise though, lets create a new pipeline from scratch!
 7) Click the ~+~ symbol that appears to the right of your ~git-clone~ task when you hover over it. Click ~Add task~ on the new block in the pipeline and enter ~ruby~ in the search.  Select ~s2i-ruby~ from ~Red Hat~ and click ~Add~.
 8) Click on the newly added ~s2i-ruby~ task and enter ~image-registry.openshift-image-registry.svc:5000/userX/ruby-pipeline-app~ as the ~IMAGE~ field, making sure to replace the X your user number. Scroll down and select ~ruby-pipeline~ in the workspace dropdown.
 9) Click the ~+~ symbol that appears to the right of your ~s2i-ruby~ task when you hover over it. Click ~Add task~ on the new block in the pipeline and enter ~openshift-client~ from ~Red Hat~ and click ~Add~.
-10) Click on the newly added ~openshift-client~ task. Update the display name to ~deploy~, then set the ~script~ field to ~oc rollout status deployment/ruby-pipeline-app~ and click ~Create~.
+10) Click on the newly added ~openshift-client~ task. Update the display name to ~deploy~, then set the ~script~ field to ~oc new-app --image image-registry.openshift-image-registry.svc:5000/userX/ruby-pipeline-app~ (remember to update X with your user number). Finally, click ~Create~.
 
-
-
+[[./images/pipeline.gif]]
 
 
 * 6. Making an application serverless
