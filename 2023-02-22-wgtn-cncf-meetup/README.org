@@ -26,7 +26,7 @@ The skupper command-line tool is the primary entrypoint for installing and confi
 We can use the provided install script to install skupper:
 
 #+NAME: Install skupper client and check version
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 curl https://skupper.io/install.sh | sh && skupper version
 #+end_src
 
@@ -36,7 +36,7 @@ curl https://skupper.io/install.sh | sh && skupper version
 Before we get into deploying skupper lets get familiar with our demo workload which is a traditional three tier container based application for a medical clinic patient portal consisting of postgres database, java backend service and web frontend.
 
 #+NAME: Deploy demo workload on premises
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 clear && export KUBECONFIG=$HOME/.kube/config
 
 kubectl create namespace demo-onprem --dry-run=client --output yaml | kubectl apply --filename -
@@ -56,7 +56,7 @@ kubectl get pods
 
 
 #+NAME: Review application
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 firefox --new-window "http://localhost:9090"
 
 kubectl port-forward deployment/frontend 9090:8080 &
@@ -68,8 +68,8 @@ kubectl port-forward deployment/frontend 9090:8080 &
 Once we have skupper client installed and a workload running lets initialise skupper in the kubernetes cluster running on our local machine, this will be our "private" / "on premise" cluster for the purposes of the demo.
 
 #+NAME: Initialise skupper on local cluster
-#+begin_src tmate :socket /tmp/james.tmate.tmate
-clear && skupper init && skupper status
+#+begin_src tmux
+clear && skupper init --ingress nodeport --ingress-host localhost --enable-console --enable-flow-collector --console-auth unsecured && skupper status
 
 kubectl get pods
 #+end_src
@@ -78,21 +78,21 @@ kubectl get pods
 With skupper initialised lets take a look at the included web console:
 
 #+NAME: Open skupper web interface
-#+begin_src tmate :socket /tmp/james.tmate.tmate
-export password=$(kubectl get secret skupper-console-users --output jsonpath="{.data.admin}" | base64 --decode)
-export console=$(kubectl get service skupper --output jsonpath="{.status.loadBalancer.ingress[0].ip}")
-echo "${password}" | xclip -selection c
+#+begin_src tmux
+#export password=$(kubectl get secret skupper-console-users --output jsonpath="{.data.admin}" | base64 --decode)
+export port=$(kubectl get svc skupper --output jsonpath={.spec.ports[0].nodePort})
+#echo "${password}" | xclip -selection c
 
-firefox --new-window "https://admin:${password}@${console}:8080"
+firefox --new-window "https://localhost:${port}"
 #+end_src
 
 
 ** Initialise skupper in public cluster
 
-So we've been tasked with migrating this application to public cloud, rather than doing a big bang migration lets use skupper to perform a progressive migration. Our first step is to setup skupper in our public cloud cluster which is a managed ROSA cluster running in ~ap-southeast-1~ (Singapore).
+So we've been tasked with migrating this application to public cloud, rather than doing a big bang migration lets use skupper to perform a progressive migration. Our first step is to setup skupper in our public cloud cluster which is a managed ROSA cluster running in AWS.
 
 #+NAME: Initialise skupper in public cluster
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 clear && kubectl --kubeconfig=$HOME/.kube/rosa create namespace demo-public --dry-run=client --output yaml | kubectl --kubeconfig=$HOME/.kube/rosa apply --filename -
 
 skupper --kubeconfig=$HOME/.kube/rosa --namespace demo-public init
@@ -104,8 +104,8 @@ kubectl --kubeconfig=$HOME/.kube/rosa --namespace demo-public get pods
 Lets quickly review our public cluster deployment using the OpenShift console. Reviewing the ~demo-public~ project metrics we can see how lightweight a skupper installation is.
 
 #+NAME: Review skupper status in public cluster
-#+begin_src tmate :socket /tmp/james.tmate.tmate
-firefox --new-window "https://console-openshift-console.apps.rosa-mgmwm.c4s2.p1.openshiftapps.com/k8s/cluster/projects/demo-public"
+#+begin_src tmux
+firefox --new-window "https://$(oc --kubeconfig ~/.kube/rosa get route --namespace openshift-console console --output jsonpath={.spec.host})/k8s/cluster/projects/demo-public"
 #+end_src
 
 
@@ -118,7 +118,7 @@ The skupper token create command generates a secret token that signifies permiss
 First, use ~skupper token create~ in one namespace to generate the token. Then, use ~skupper link create~ in the other to create a link.
 
 #+NAME: Establish link between clusters
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 clear && skupper --kubeconfig=$HOME/.kube/rosa --namespace demo-public token create 1-progressive-migration/secret.token
 
 skupper link create --name "van" 1-progressive-migration/secret.token
@@ -128,8 +128,8 @@ skupper link create --name "van" 1-progressive-migration/secret.token
 Now that we have linked our clusters lets review the skupper interface to confirm that new link is present.
 
 #+NAME: Review skupper console
-#+begin_src tmate :socket /tmp/james.tmate.tmate
-firefox --private-window "https://admin:${password}@${console}:8080"
+#+begin_src tmux
+firefox --private-window "https://localhost:${port}"
 #+end_src
 
 
@@ -138,7 +138,7 @@ firefox --private-window "https://admin:${password}@${console}:8080"
 With a virtual application network in place lets use it to expose our backend service to our public cluster.
 
 #+NAME: Expose payments-processor service
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 clear && kubectl get svc --kubeconfig $HOME/.kube/rosa --namespace demo-public
 
 skupper expose deployment/payment-processor --port 8080
@@ -157,7 +157,7 @@ Our backend service is now available in our public cluster thanks to our skupper
 We will scale up a fresh deployment on our public cluster, scale down on our on premises cluster then verify that our application frontend can still talk to our backend services and works as expected.
 
 #+NAME: Migrate frontend to the public cluster
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 clear
 kubectl --kubeconfig $HOME/.kube/rosa --namespace demo-public create --filename 1-progressive-migration/frontend.yaml
 kubectl --kubeconfig $HOME/.kube/rosa --namespace demo-public rollout status deployment/frontend
@@ -170,9 +170,9 @@ kubectl delete --filename 1-progressive-migration/frontend.yaml --ignore-not-fou
 
 
 #+NAME: Verify application functionality
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 firefox --new-window \
-        --new-tab --url "https://admin:${password}@${console}:8080" \
+        --new-tab --url "https://localhost:${port}" \
         --new-tab --url "https://${route}"
 #+end_src
 
@@ -184,7 +184,7 @@ In theory our application continues to run as normal, We just performed a progre
 Finished with the demo? Because skupper is so lightweight and only present in our application namespaces it will automatically be torn down when the namespaces are deleted, otherwise you can run the ~skupper delete~ to remove an installation from a namespace.
 
 #+NAME: Teardown demo namespaces
-#+begin_src tmate :socket /tmp/james.tmate.tmate
+#+begin_src tmux
 kubectl --kubeconfig $HOME/.kube/config delete namespace demo-onprem
 kubectl --kubeconfig $HOME/.kube/rosa delete namespace demo-public
 #+end_src
