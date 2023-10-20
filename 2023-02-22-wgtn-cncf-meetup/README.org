@@ -79,9 +79,7 @@ With skupper initialised lets take a look at the included web console:
 
 #+NAME: Open skupper web interface
 #+begin_src tmux
-#export password=$(kubectl get secret skupper-console-users --output jsonpath="{.data.admin}" | base64 --decode)
 export port=$(kubectl get svc skupper --output jsonpath={.spec.ports[0].nodePort})
-#echo "${password}" | xclip -selection c
 
 firefox --new-window "https://localhost:${port}"
 #+end_src
