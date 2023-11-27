@@ -12,10 +12,14 @@ Whether you attended one of my talks or just stumbled upon this repository, I ho
 * List of talks:
 
 #+CAPTION: List of talks
-|       Date | Location   | Title                                                            | Material |
-|------------+------------+------------------------------------------------------------------+----------|
-| 01-02-2023 | Wellington | OpenShift Meetup, Cloud Native Landscape Updates                 | [[./2023-02-01-openshift-meetup/][link]]     |
-| 22-02-2023 | Wellington | CNCF Meetup, Connecting clouds the easy way, introducing Skupper | [[./2023-02-22-wgtn-cncf-meetup][link]]     |
-| 15-03-2023 | Wellington | Ansible Meetup, Lightening Talk, ChatOps in Jira via Ansible     | [[./2023-03-15-wgtn-ansible-meetup][link]]     |
-| 15-06-2023 | Wellington | Workshop, Chaos Engineering                                      | [[2023-06-15-chaos-engineering-workshop][link]]     |
-| 20-07-2023 | Remote     | APAC Hybrid Cloud Kopi Hour E05, RHACM + Submariner              | [[./2023-07-20-acm-submariner-stream][link]]     |
+|       Date | Location   | Title                                                              | Material |
+|------------+------------+--------------------------------------------------------------------+----------|
+| 01-02-2023 | Wellington | OpenShift Meetup, Cloud Native Landscape Updates                   | [[./2023-02-01-openshift-meetup/][link]]     |
+| 22-02-2023 | Wellington | CNCF Meetup, Connecting clouds the easy way, introducing Skupper   | [[./2023-02-22-wgtn-cncf-meetup][link]]     |
+| 15-03-2023 | Wellington | Ansible Meetup, Lightening Talk, ChatOps in Jira via Ansible       | [[./2023-03-15-wgtn-ansible-meetup][link]]     |
+| 15-06-2023 | Wellington | Workshop, Chaos Engineering                                        | [[2023-06-15-chaos-engineering-workshop][link]]     |
+| 20-07-2023 | Remote     | APAC Hybrid Cloud Kopi Hour E05, RHACM + Submariner                | [[./2023-07-20-acm-submariner-stream][link]]     |
+| 31-07-2023 | Wellington | Integrating RHACS into developer workflows                         | [[./2023-07-31-acs-workflows][link]]     |
+| 31-08-2023 | Wellington | OpenShift ruby on rails workshop                                   | [[./2023-08-31-openshift-rails-workshop][link]]     |
+| 05-11-2023 | Chicago    | Cloud Native Rejekts lightning talk: What's next for etcd?         | [[https://www.youtube.com/watch?v=tWWBzsZLrIw&t=28847s][video]]    |
+| 08-11-2023 | Chicago    | KubeCon NA 2023: Forging a stronger bond between etcd & Kubernetes | [[https://www.youtube.com/watch?v=6JYgBJAjpNQ][video]]    |
