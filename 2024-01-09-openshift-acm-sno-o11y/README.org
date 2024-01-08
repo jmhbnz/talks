@@ -1,0 +1,43 @@
+#+TITLE: OpenShift Advanced Cluster Management Observability
+#+AUTHOR: James Blair
+#+DATE: <2024-01-09 Tue 08:00>
+
+* Introduction
+
+This document captures the environment setup steps for a ~30 minute live demo of the [[https://www.redhat.com/en/technologies/management/advanced-cluster-management][Red Hat Advanced Cluster Management]] observability feature for [[https://www.redhat.com/en/technologies/cloud-computing/openshift][Openshift]].
+
+
+* Pre-requisites
+
+ This guide assumes you have access to an Amazon Web Services account with persmissions to be able to create resources including ~s3~ buckets and ~ec2~ instances.
+
+ In my case I have an AWS Blank Open Environment provisioned through the Red Hat [[https://demo.redhat.com][demo system]].
+
+
+* 1 - Logging into aws locally
+
+Our first step is to login to our aws account locally via the ~aws~ cli which will prompt for four values:
+
+#+begin_src tmux
+aws configure
+#+end_src
+
+#+begin_src text
+AWS Access Key ID [****************RAVM]:
+AWS Secret Access Key [****************oHWv]:
+Default region name [ap-southeast-1]:
+Default output format [json]:
+#+end_src
+
+
+* 2 - Creating s3 bucket
+
+After logging into aws lets confirm our permissions are working by creating the ~s3~ bucket we will need later on.
+
+#+begin_src tmux
+aws s3 mb "s3://open-cluster-management-observability" --region "$(aws configure get region)"
+#+end_src
+
+#+begin_src text
+make_bucket: open-cluster-management-observability
+#+end_src
