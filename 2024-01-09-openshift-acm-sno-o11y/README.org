@@ -9,9 +9,13 @@ This document captures the environment setup steps for a ~30 minute live demo of
 
 * Pre-requisites
 
- This guide assumes you have access to an Amazon Web Services account with persmissions to be able to create resources including ~s3~ buckets and ~ec2~ instances.
+This guide assumes you:
 
- In my case I have an AWS Blank Open Environment provisioned through the Red Hat [[https://demo.redhat.com][demo system]].
+- Have access to an Amazon Web Services account with permissions to be able to create resources including ~s3~ buckets and ~ec2~ instances. In my case I have an AWS Blank Open Environment provisioned through the Red Hat [[https://demo.redhat.com][demo system]].
+
+- Already have the ~aws~ and ~oc~ cli utilities installed.
+
+- Have registered for a Red Hat account (required for obtaining an OpenShift install image pull secret).
 
 
 * 1 - Logging into aws locally
@@ -20,13 +24,6 @@ Our first step is to login to our aws account locally via the ~aws~ cli which wi
 
 #+begin_src tmux
 aws configure
-#+end_src
-
-#+begin_src text
-AWS Access Key ID [****************RAVM]:
-AWS Secret Access Key [****************oHWv]:
-Default region name [ap-southeast-1]:
-Default output format [json]:
 #+end_src
 
 
@@ -38,6 +35,71 @@ After logging into aws lets confirm our permissions are working by creating the 
 aws s3 mb "s3://open-cluster-management-observability" --region "$(aws configure get region)"
 #+end_src
 
-#+begin_src text
-make_bucket: open-cluster-management-observability
+
+* 3 - Install openshift clusters
+
+With our aws credentials working let's move on to deploying the hub and single node openshift cluster required for the live demo.
+
+
+** 3.1 Download installer tools
+
+Our first step will be to ensure we have the ~openshift-install~ cli tool. We can download it as follows:
+
+#+begin_src tmux
+# Download the installer
+wget "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-install-linux.tar.gz"
+
+# Extract the archive
+tar xf openshift-install-linux.tar.gz
+#+end_src
+
+
+** 3.2 Obtain install pull secret
+
+Next we have a manual step to login to the Red Hat Hybrid Cloud Console and obtain our **Pull Secret** which will be required for our installation configuration.
+
+Open the [[https://console.redhat.com/openshift/create/local][Console]] and click **Download pull secret**. This will download a file called ~pull-secret.txt~ which will be used later on.
+
+
+** 3.3 Initiate the hub cluster install
+
+Once our install tooling is available let's kick off the installation of our hub cluster by creating a configuration file and then running ~openshift-install~.
+
+#+begin_src tmux
+cat << EOF > hub-install-config-yaml
+additionalTrustBundlePolicy: Proxyonly
+apiVersion: v1
+baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[].Name' -r | sed 's/.$//')
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform: {}
+  replicas: 3
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform: {}
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: hub
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: $(aws configure get region)
+publish: External
+pullSecret: '<add your pull-secret>'
+sshKey: |
+  <add your public ssh key>
+EOF
 #+end_src
