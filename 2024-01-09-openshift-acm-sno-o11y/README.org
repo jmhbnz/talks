@@ -61,12 +61,22 @@ Next we have a manual step to login to the Red Hat Hybrid Cloud Console and obta
 Open the [[https://console.redhat.com/openshift/create/local][Console]] and click **Download pull secret**. This will download a file called ~pull-secret.txt~ which will be used later on.
 
 
+** 3.3 Create ssh key
+
+For access to our soon to be created clusters we need an ssh key, let's generate those now via ~ssh-keygen~.
+
+#+begin_src tmux
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/hubkey -q -N ""
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/snokey -q -N ""
+#+end_src
+
+
 ** 3.3 Initiate the hub cluster install
 
 Once our install tooling is available let's kick off the installation of our hub cluster by creating a configuration file and then running ~openshift-install~.
 
 #+begin_src tmux
-cat << EOF > hub-install-config-yaml
+cat << EOF > hub/install-config.yaml
 additionalTrustBundlePolicy: Proxyonly
 apiVersion: v1
 baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[].Name' -r | sed 's/.$//')
@@ -98,8 +108,67 @@ platform:
   aws:
     region: $(aws configure get region)
 publish: External
-pullSecret: '<add your pull-secret>'
+pullSecret: |
+  $(cat pull-secret.txt)
 sshKey: |
-  <add your public ssh key>
+  $(cat ~/.ssh/hubkey.pub)
 EOF
+#+end_src
+
+
+Once the configuration file is created we can kick off the install with ~openshift-install~ as follows:
+
+#+begin_src tmux
+./openshift-install create cluster --dir hub --log-level info
+#+end_src
+
+
+** 3.4 Initiate the sno cluster install
+
+We can run our single node openshift cluster install at the same time in a separate terminal to speed things up.  The process is the same we will first create an ~install-config.yaml~ file, then run ~openshift-install~.
+
+#+begin_src tmux
+cat << EOF > sno/install-config.yaml
+additionalTrustBundlePolicy: Proxyonly
+apiVersion: v1
+baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[].Name' -r | sed 's/.$//')
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform: {}
+  replicas: 0
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform: {}
+  replicas: 1
+metadata:
+  creationTimestamp: null
+  name: sno
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: $(aws configure get region)
+publish: External
+pullSecret: |
+  $(cat pull-secret.txt)
+sshKey: |
+  $(cat ~/.ssh/snokey.pub)
+EOF
+#+end_src
+
+Once the configuration file is created we can kick off the install with ~openshift-install~ as follows:
+
+#+begin_src tmux
+./openshift-install create cluster --dir sno --log-level info
 #+end_src
