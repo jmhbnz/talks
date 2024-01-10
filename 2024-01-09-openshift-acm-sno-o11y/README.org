@@ -172,3 +172,169 @@ Once the configuration file is created we can kick off the install with ~openshi
 #+begin_src tmux
 ./openshift-install create cluster --dir sno --log-level info
 #+end_src
+
+
+* 4 - Install advanced cluster management
+
+To make use of the Red Hat Advanced Cluster Management Observability feature we need to first install advanced cluster management on our hub cluster via the acm operator.
+
+Let's get started by creating an ~OperatorGroup~ and ~Subscription~ which will install the operator.
+
+#+begin_src tmux
+oc create namespace open-cluster-management
+
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: acm-operator-group
+  namespace: open-cluster-management
+spec:
+  targetNamespaces:
+    - open-cluster-management
+
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: acm-operator-subscription
+  namespace: open-cluster-management
+spec:
+  sourceNamespace: openshift-marketplace
+  source: redhat-operators
+  channel: release-2.9
+  installPlanApproval: Automatic
+  name: advanced-cluster-management
+EOF
+#+end_src
+
+
+Once the operator is installed we can create the ~MultiClusterHub~ resource to install Advanced Cluster Management.
+
+Note: It can take up to ten minutes for this to complete.
+
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+  spec: {}
+EOF
+#+end_src
+
+
+* 5 - Enable acm observability
+
+Now, with our clusters deployed and acm installed we can enable the observability service by creating a ~MultiClusterObservability~ custom resource instance on the ~hub~ cluster.
+
+Our first step towards this is to create two secrets.
+
+#+begin_src tmux
+oc create namespace open-cluster-management-observability
+
+DOCKER_CONFIG_JSON=`oc extract secret/pull-secret -n openshift-config --to=-`
+
+oc create secret generic multiclusterhub-operator-pull-secret \
+    -n open-cluster-management-observability \
+    --from-literal=.dockerconfigjson="$DOCKER_CONFIG_JSON" \
+    --type=kubernetes.io/dockerconfigjson
+
+
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: thanos-object-storage
+  namespace: open-cluster-management-observability
+type: Opaque
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: open-cluster-management-observability
+      endpoint: s3.$(aws configure get region).amazonaws.com
+      insecure: true
+      access_key: $(aws configure get aws_access_key_id)
+      secret_key: $(aws configure get aws_secret_access_key)
+EOF
+#+end_src
+
+
+Once the two required secrets exist we can create the ~MultiClusterObservability~ resource as follows:
+
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: observability.open-cluster-management.io/v1beta2
+kind: MultiClusterObservability
+metadata:
+  name: observability
+spec:
+  observabilityAddonSpec: {}
+  storageConfig:
+    metricObjectStorage:
+      name: thanos-object-storage
+      key: thanos.yaml
+EOF
+#+end_src
+
+After creating the resource and waiting briefyl we can access the grafana console via the ~Route~ to confirm everything is running:
+
+#+begin_src tmux
+echo "https://$(oc get route -n open-cluster-management-observability grafana -o jsonpath={.spec.host})"
+#+end_src
+
+
+* 6 - Import the single node openshift cluster into acm
+
+#+begin_src tmux
+oc new-project sno
+oc label namespace sno cluster.open-cluster-management.io/managedCluster=sno
+#+end_src
+
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: sno
+spec:
+  hubAcceptsClient: true
+
+---
+apiVersion: agent.open-cluster-management.io/v1
+kind: KlusterletAddonConfig
+metadata:
+  name: sno
+  namespace: sno
+spec:
+  clusterName: sno
+  clusterNamespace: sno
+  applicationManager:
+    enabled: true
+  certPolicyController:
+    enabled: true
+  clusterLabels:
+    cloud: auto-detect
+    vendor: auto-detect
+  iamPolicyController:
+    enabled: true
+  policyController:
+    enabled: true
+  searchCollector:
+    enabled: true
+  version: 2.0.0
+EOF
+#+end_src
+
+The ManagedCluster-Import-Controller will generate a secret named ~sno-import~. The ~sno-import~ secret contains the ~import.yaml~ that the user applies to a managed cluster to install ~klusterlet~.
+
+
+#+begin_src tmux
+oc get secret sno-import -n sno -o jsonpath={.data.crds\\.yaml} | base64 --decode > klusterlet-crd.yaml
+oc get secret sno-import -n sno -o jsonpath={.data.import\\.yaml} | base64 --decode > import.yaml
+
+oc --kubeconfig sno/auth/kubeconfig apply --filename klusterlet-crd.yaml
+oc --kubeconfig sno/auth/kubeconfig apply --filename import.yaml
+#+end_src
