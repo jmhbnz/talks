@@ -352,7 +352,7 @@ sno             true           https://api.cluster-vzmvz.<yourdomain>.com:6443  
 For edge scenarios we only send metrics to the hub cluster if certain thresholds are hit for a certain period of time (here 70% for more than 2 minutes - you can see this configuration in the open-cluster-management-addon-observability namespace under ConfigMaps observability-metrics-allowlist in the collect_rules section under SNOHighCPUUsage). 
 In order to hit that trigger we now deploy a cpu-heavy workload in order for sno-cluster metrics being sent to the ACM hub cluster.
 
-We create a new project on sno
+Let's get started by creating a new project on the sno cluster:
 #+begin_src tmux
 oc new-project cpu-load-test
 #+end_src
