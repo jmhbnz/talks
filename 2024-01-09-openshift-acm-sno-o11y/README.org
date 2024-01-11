@@ -349,7 +349,8 @@ sno             true           https://api.cluster-vzmvz.<yourdomain>.com:6443  
 #+end_src
 
 * 7 - Creating the edge workload on SNO
-For edge scenarios we only send metrics to the hub cluster if certain thresholds are hit for a certain period of time (here 70% for more than 2 minutes - you can see this configuration in the open-cluster-management-addon-observability namespace under ConfigMaps observability-metrics-allowlist in the collect_rules section under SNOHighCPUUsage). Hence we now deploy cpu-heavy workload to hit those thresholds which in turn triggers the metrics being sent from sno to the ACM hub cluster.
+For edge scenarios we only send metrics to the hub cluster if certain thresholds are hit for a certain period of time (here 70% for more than 2 minutes - you can see this configuration in the open-cluster-management-addon-observability namespace under ConfigMaps observability-metrics-allowlist in the collect_rules section under SNOHighCPUUsage). 
+In order to hit that trigger we now deploy a cpu-heavy workload in order for sno-cluster metrics being sent to the ACM hub cluster.
 
 We create a new project on sno
 #+begin_src tmux
