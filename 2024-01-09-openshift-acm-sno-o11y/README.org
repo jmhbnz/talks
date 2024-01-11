@@ -338,3 +338,15 @@ oc get secret sno-import -n sno -o jsonpath={.data.import\\.yaml} | base64 --dec
 oc --kubeconfig sno/auth/kubeconfig apply --filename klusterlet-crd.yaml
 oc --kubeconfig sno/auth/kubeconfig apply --filename import.yaml
 #+end_src
+
+If everything works fine you should see JOINED and available clusters from within your hub cluster
+
+#+begin_src tmux
+❯ kubectl get managedcluster -n sno
+NAME            HUB ACCEPTED   MANAGED CLUSTER URLS                                           JOINED   AVAILABLE   AGE
+local-cluster   true           https://api.hub.<yourdomain>.com:6443                          True     True        5h12m
+sno             true           https://api.cluster-vzmvz.<yourdomain>.com:6443                True     True        31m
+#+end_src
+
+* 7 - Creating the edge workload on SNO
+
