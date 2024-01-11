@@ -339,7 +339,7 @@ oc --kubeconfig sno/auth/kubeconfig apply --filename klusterlet-crd.yaml
 oc --kubeconfig sno/auth/kubeconfig apply --filename import.yaml
 #+end_src
 
-If everything works fine you should see JOINED and available clusters from within your hub cluster
+If everything works fine you should see JOINED and AVAILABLE sno cluster from within your hub cluster
 
 #+begin_src tmux
 ❯ kubectl get managedcluster -n sno
