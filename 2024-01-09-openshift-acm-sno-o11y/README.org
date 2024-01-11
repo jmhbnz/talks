@@ -349,4 +349,42 @@ sno             true           https://api.cluster-vzmvz.<yourdomain>.com:6443  
 #+end_src
 
 * 7 - Creating the edge workload on SNO
+For edge scenarios we only send metrics to the hub cluster if certain thresholds are hit for a certain period of time (here 70% for more than 2 minutes). Hence we now deploy cpu-heavy workload to hit those thresholds which in turn triggers the metrics being sent from sno to the ACM hub cluster.
+
+We create a new project on sno
+#+begin_src tmux
+oc new-project cpu-load-test
+#+end_src
+
+and deploy the cpu-load-container workload on a busybox container
+
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-load-test
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: cpu-load-test
+  template:
+    metadata:
+      labels:
+        app: cpu-load-test
+    spec:
+      containers:
+      - name: cpu-load-container
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+          - while true; do
+              echo "Performing CPU load...";
+              dd if=/dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 1000 | head -n 1000000 > /dev/null;
+            done
+EOF
+#+end_src
+
+
 
