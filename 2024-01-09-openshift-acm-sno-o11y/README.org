@@ -4,7 +4,7 @@
 
 * Introduction
 
-This document captures the environment setup steps for a ~30 minute live demo of the [[https://www.redhat.com/en/technologies/management/advanced-cluster-management][Red Hat Advanced Cluster Management]] observability feature for [[https://www.redhat.com/en/technologies/cloud-computing/openshift][Openshift]].
+This document captures the environment setup steps for a ~30 minute live demo of the [[https://www.redhat.com/en/technologies/management/advanced-cluster-management][Red Hat Advanced Cluster Management]] observability feature for [[https://www.redhat.com/en/technologies/cloud-computing/openshift][OpenShift]].
 
 
 * Pre-requisites
@@ -43,31 +43,33 @@ With our aws credentials working let's move on to deploying the hub and single n
 
 ** 3.1 Download installer tools
 
-Our first step will be to ensure we have the ~openshift-install~ cli tool. We can download it as follows:
+Our first step will be to ensure we have an up to date version of the ~openshift-install~ cli tool. We can download it as follows:
 
 #+begin_src tmux
 # Download the installer
 wget "https://mirror.openshift.com/pub/openshift-v4/$(uname -m)/clients/ocp/stable/openshift-install-linux.tar.gz"
 
 # Extract the archive
-tar xf openshift-install-linux.tar.gz
+tar xf openshift-install-linux.tar.gz openshift-install && rm openshift-install-linux.tar.gz*
 #+end_src
 
 
 ** 3.2 Obtain install pull secret
 
-Next we have a manual step to login to the Red Hat Hybrid Cloud Console and obtain our **Pull Secret** which will be required for our installation configuration.
+Next we have a manual step to login to the Red Hat Hybrid Cloud Console and obtain our *Pull Secret* which will be required for our installation configuration.
 
-Open the [[https://console.redhat.com/openshift/create/local][Console]] and click **Download pull secret**. This will download a file called ~pull-secret.txt~ which will be used later on.
+Open the [[https://console.redhat.com/openshift/create/local][Console]] and click *Download pull secret*. This will download a file called ~pull-secret.txt~ which will be used later on.
+
+Once the file downloads ensure it is copied or moved to the directory you will be running the remaining commands on this guide from.
 
 
 ** 3.3 Create ssh key
 
-For access to our soon to be created clusters we need an ssh key, let's generate those now via ~ssh-keygen~.
+For access to our soon to be created cluster nodes we need an ssh key, let's generate those now via ~ssh-keygen~.
 
 #+begin_src tmux
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/hubkey -q -N ""
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/snokey -q -N ""
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/hubkey -q -N "" <<< y
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/snokey -q -N "" <<< y
 #+end_src
 
 
@@ -79,13 +81,13 @@ Once our install tooling is available let's kick off the installation of our hub
 cat << EOF > hub/install-config.yaml
 additionalTrustBundlePolicy: Proxyonly
 apiVersion: v1
-baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[].Name' -r | sed 's/.$//')
+baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[0].Name' -r | sed 's/.$//')
 compute:
 - architecture: amd64
   hyperthreading: Enabled
   name: worker
   platform: {}
-  replicas: 3
+  replicas: 0
 controlPlane:
   architecture: amd64
   hyperthreading: Enabled
@@ -110,13 +112,11 @@ platform:
 publish: External
 pullSecret: |
   $(cat pull-secret.txt)
-sshKey: |
-  $(cat ~/.ssh/hubkey.pub)
 EOF
 #+end_src
 
 
-Once the configuration file is created we can kick off the install with ~openshift-install~ as follows:
+Once the configuration file is created we can kick off the install with ~openshift-install~ as follows. The install process will generally take about half an hour.
 
 #+begin_src tmux
 ./openshift-install create cluster --dir hub --log-level info
@@ -131,7 +131,7 @@ We can run our single node openshift cluster install at the same time in a separ
 cat << EOF > sno/install-config.yaml
 additionalTrustBundlePolicy: Proxyonly
 apiVersion: v1
-baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[].Name' -r | sed 's/.$//')
+baseDomain: $(aws route53 list-hosted-zones | jq '.HostedZones[0].Name' -r | sed 's/.$//')
 compute:
 - architecture: amd64
   hyperthreading: Enabled
@@ -162,12 +162,10 @@ platform:
 publish: External
 pullSecret: |
   $(cat pull-secret.txt)
-sshKey: |
-  $(cat ~/.ssh/snokey.pub)
 EOF
 #+end_src
 
-Once the configuration file is created we can kick off the install with ~openshift-install~ as follows:
+Once the configuration file is created we can kick off the install with ~openshift-install~ as follows. The install process will generally take about half an hour.
 
 #+begin_src tmux
 ./openshift-install create cluster --dir sno --log-level info
@@ -176,7 +174,7 @@ Once the configuration file is created we can kick off the install with ~openshi
 
 * 4 - Install advanced cluster management
 
-To make use of the Red Hat Advanced Cluster Management Observability feature we need to first install advanced cluster management on our hub cluster via the acm operator.
+To make use of the Red Hat Advanced Cluster Management Observability feature we need to first install [[https://www.redhat.com/en/technologies/management/advanced-cluster-management][Advanced Cluster Management]] on our hub cluster via the acm operator.
 
 Let's get started by creating an ~OperatorGroup~ and ~Subscription~ which will install the operator.
 
