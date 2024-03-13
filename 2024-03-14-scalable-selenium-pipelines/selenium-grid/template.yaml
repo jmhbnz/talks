@@ -1,0 +1,92 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: selenium-hub-parksmap
+  annotations:
+    description: "A Selenium Grid"
+    iconClass: "icon-selenium"
+    tags: "selenium,hub"
+objects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: selenium-hub-parksmap
+    spec:
+      selector:
+        type: selenium-hub
+      type: ClusterIP
+      ports:
+        - name: web
+          port: 4444
+          targetPort: 4444
+          protocol: TCP
+        - name: node
+          port: 5555
+          targetPort: 5555
+          protocol: TCP
+        - name: publish
+          port: 4442
+          targetPort: 4442
+          protocol: TCP
+        - name: subscribe
+          port: 4443
+          targetPort: 4443
+          protocol: TCP
+  - apiVersion: v1
+    kind: DeploymentConfig
+    metadata:
+      name: selenium-hub-parksmap
+    spec:
+      replicas: 1
+      selector:
+        type: selenium-hub
+      template:
+        metadata:
+          labels:
+            type: selenium-hub
+          name: selenium-hub-parksmap
+        spec:
+          containers:
+          - env:
+            - name: JAVA_OPTS
+              value: "-Xmx512m"
+            - name: POOL_MAX
+              value: "30000"
+            - name: GRID_NEW_SESSION_WAIT_TIMEOUT
+              value: "30"
+            - name: GRID_JETTY_MAX_THREADS
+              value: "100"
+            - name: GRID_NODE_POLLING
+              value: "5"
+            - name: GRID_CLEAN_UP_CYCLE
+              value: "300"
+            - name: GRID_TIMEOUT
+              value: "300"
+            - name: GRID_BROWSER_TIMEOUT
+              value: "300"
+            - name: GRID_MAX_SESSION
+              value: "3"
+            - name: GRID_UNREGISTER_IF_STILL_DOWN_AFTER
+              value: "5"
+            image: docker.io/selenium/hub:4.18.1
+            name: selenium-hub-parksmap
+            ports:
+            - containerPort: 4444
+              protocol: TCP
+  - apiVersion: v1
+    kind: Route
+    metadata:
+      name: selenium-hub-parksmap
+    spec:
+      host: selenium-hub-parksmap.apps.cluster-272j9.dynamic.redhatworkshops.io
+      port:
+        targetPort: 4444
+      tls:
+        termination: edge
+      to:
+        kind: Service
+        name: selenium-hub-parksmap
+        weight: 100
+  labels:
+    selenium-hub: master

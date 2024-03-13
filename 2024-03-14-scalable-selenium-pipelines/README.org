@@ -76,6 +76,36 @@ EOF
 #+end_src
 
 #+RESULTS:
-: subscription.operators.coreos.com/openshift-pipelines-operator configured
+: subscription.operators.coreos.com/openshift-pipelines-operator created
 
 
+* Step 2 - Create sample selenium pipeline
+
+Once OpenShift Pipelines is installed we can create an example pipeline to demonstrate the flow in the diagram above.
+
+
+
+#+begin_src bash :results output
+# Create namespace for application test environment
+oc new-project parksmap-tst
+
+# Create pipeline
+cat << EOF | oc apply --filename -
+
+
+EOF
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Now using project "parksmap-tst" on server "https://api.cluster-272j9.dynamic.redhatworkshops.io:6443".
+
+You can add applications to this project with the 'new-app' command. For example, try:
+
+    oc new-app rails-postgresql-example
+
+to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
+
+    kubectl create deployment hello-node --image=k8s.gcr.io/e2e-test-images/agnhost:2.33 -- /agnhost serve-hostname
+
+#+end_example
