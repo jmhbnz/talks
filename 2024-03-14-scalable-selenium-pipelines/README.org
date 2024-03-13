@@ -19,4 +19,24 @@ Gone are the days where we treat our testing infrastructure like sacred pets. In
 
 Below is an outline of what this flow looks like, obviously a real world application testing pipeline has many other stages, the diagram below is focused only on the browser testing phase to illustrate the high level steps within:
 
-[[./images/graphviz.svg]]
+#+begin_src dot :exports none :results silent
+digraph G {
+  bgcolor="transparent"
+  subgraph cluster_0 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=gray];
+    "Deploy Selenium Grid" -> "Deploy Selenium Node Chrome" -> "Execute Tests" -> "Delete Selenium Node Chrome" -> "Delete Selenium Grid" -> "Publish Report";
+    label = "Selenium testing stage";
+  }
+
+  start -> "Deploy Selenium Grid";
+
+  "Publish Report" -> end;
+
+  start [style=filled, color=green, label="Start application testing pipeline"];
+  end [style=filled, color=red, label = "End application testing pipeline"];
+}
+#+end_src
+
+[[./images/graphviz.png]]
