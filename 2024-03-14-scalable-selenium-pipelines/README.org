@@ -11,18 +11,21 @@ Selenium automates browsers. Primarily it is for automating web applications for
 We will harness the power of containers and OpenShift to create a scalable and orchestrated cloud native approach to testing with Selenium.
 
 
-* The situation
+** The situation
 
 So let's say we have a container based application deployed on OpenShift, and we now want to perform automated browser based testing for that application on OpenShift.
 
-Gone are the days where we treat our testing infrastructure like sacred pets. In this guide each application that wants to perform browser based testing will leverage shared pipelines to spin up on demand Selenium components, carry out the testing, then throw it away once completed.
+Gone are the days where we treat our testing infrastructure like sacred pets. In this guide each application that needs to perform browser based testing will leverage shared pipelines to spin up it's own on demand Selenium components, carry out the testing, then throw them away once completed.
 
 Below is an outline of what this flow looks like, obviously a real world application testing pipeline has many other stages, the diagram below is focused only on the browser testing phase to illustrate the high level steps within:
 
 #+begin_src dot :exports none :results silent
 digraph G {
+  newrank=true
+  rankdir=LR;
   bgcolor="transparent"
   subgraph cluster_0 {
+    rank=same;
     style=filled;
     color=lightgrey;
     node [style=filled,color=gray];
@@ -40,3 +43,39 @@ digraph G {
 #+end_src
 
 [[./images/graphviz.png]]
+
+
+** Pre-requisites
+
+This guide assumes you have an OpenShift ~4.12+~ cluster running, with administrative privileges on that cluster.
+
+Additionally, for the purposes of running continuous integration pipelines we will be making use of [[https://docs.openshift.com/pipelines/1.14/about/about-pipelines.html][OpenShift Pipelines]] so some understanding of OpenShift Pipelines and/or Tekton is assumed.
+
+Lastly, steps in this guide will rely on the ~oc~ OpenShift command line utility so ensure you are logged into the cluster via ~oc login~ before running any of the following steps.
+
+
+* Step 1 - Install OpenShift Pipelines
+
+Before we get into setting up Selenium testing pipelines we first need to install the [[https://docs.openshift.com/container-platform/4.10/cicd/pipelines/understanding-openshift-pipelines.html][OpenShift Pipelines]] operator so we can easily create and interact with pipelines on the cluster.
+
+Our first step is to create a ~subscription~ resource which will automatically install the OpenShift Pipelines operator. Let's run the code block below to do that.
+
+#+begin_src bash :results output
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-pipelines-operator
+  namespace: openshift-operators
+spec:
+  channel: latest
+  name: openshift-pipelines-operator-rh
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS:
+: subscription.operators.coreos.com/openshift-pipelines-operator configured
+
+
