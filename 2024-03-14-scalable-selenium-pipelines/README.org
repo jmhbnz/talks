@@ -1,0 +1,22 @@
+#+TITLE: On-demand Selenium on OpenShift
+#+AUTHOR: James Blair
+#+DATE: <2024-03-14 Tue 09:00>
+
+* Introduction
+
+This guide outlines how to setup an on-demand [[https://www.selenium.dev/][Selenium]] testing pipeline in [[https://www.redhat.com/en/technologies/cloud-computing/openshift][OpenShift]].
+
+Selenium automates browsers. Primarily it is for automating web applications for testing purposes, but is certainly not limited to just that. This guide relies on the "Selenium Grid" component for running tests in a distributed way.
+
+We will harness the power of containers and OpenShift to create a scalable and orchestrated cloud native approach to testing with Selenium.
+
+
+* The situation
+
+So let's say we have a container based application deployed on OpenShift, and we now want to perform automated browser based testing for that application on OpenShift.
+
+Gone are the days where we treat our testing infrastructure like sacred pets. In this guide each application that wants to perform browser based testing will leverage shared pipelines to spin up on demand Selenium components, carry out the testing, then throw it away once completed.
+
+Below is an outline of what this flow looks like, obviously a real world application testing pipeline has many other stages, the diagram below is focused only on the browser testing phase to illustrate the high level steps within:
+
+[[./images/graphviz.svg]]
