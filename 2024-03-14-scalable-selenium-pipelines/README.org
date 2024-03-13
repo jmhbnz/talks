@@ -89,23 +89,16 @@ Once OpenShift Pipelines is installed we can create an example pipeline to demon
 # Create namespace for application test environment
 oc new-project parksmap-tst
 
+oc --namespace "parksmap-tst" create -f selenium-grid/template.yaml
+oc --namespace "parksmap-tst" process selenium-hub-parksmap | oc --namespace "parksmap-tst" create -f -
 # Create pipeline
-cat << EOF | oc apply --filename -
-
-
-EOF
+#cat << EOF | oc apply --filename -
+#
+#
+#EOF
 #+end_src
 
 #+RESULTS:
-#+begin_example
-Now using project "parksmap-tst" on server "https://api.cluster-272j9.dynamic.redhatworkshops.io:6443".
-
-You can add applications to this project with the 'new-app' command. For example, try:
-
-    oc new-app rails-postgresql-example
-
-to build a new example application in Ruby. Or use kubectl to deploy a simple Kubernetes application:
-
-    kubectl create deployment hello-node --image=k8s.gcr.io/e2e-test-images/agnhost:2.33 -- /agnhost serve-hostname
-
-#+end_example
+: service/selenium-hub-parksmap created
+: deploymentconfig.apps.openshift.io/selenium-hub-parksmap created
+: route.route.openshift.io/selenium-hub-parksmap created
