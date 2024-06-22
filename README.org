@@ -24,3 +24,4 @@ Whether you attended one of my talks or just stumbled upon this repository, I ho
 | 05-11-2023 | Chicago    | Cloud Native Rejekts lightning talk: What's next for etcd?         | [[https://www.youtube.com/watch?v=tWWBzsZLrIw&t=28847s][video]]    |
 | 08-11-2023 | Chicago    | KubeCon NA 2023: Forging a stronger bond between etcd & Kubernetes | [[https://www.youtube.com/watch?v=6JYgBJAjpNQ][video]]    |
 | 06-06-2024 | Wellington | Kubernetes for the next decade                                     | [[./2024-06-06-kubertens-meetup][link]]     |
+| 20-06-2024 | Wellington | Building OpenShift Appliances                                      | [[./2024-06-20-openshift-meetup][link]]     |
