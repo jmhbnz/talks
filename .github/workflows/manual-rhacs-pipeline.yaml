@@ -34,6 +34,7 @@ jobs:
 
   scan-image:
     runs-on: ubuntu-latest
+    needs: build-and-push-image
     permissions:
       id-token: write
     steps:
@@ -42,12 +43,14 @@ jobs:
         uses: stackrox/central-login@v1
         with:
           endpoint: ${{ env.CENTRAL_ENDPOINT }}
+          skip-tls-verify: true
 
       - name: Install roxctl
         uses: stackrox/roxctl-installer-action@v1
         with:
           central-endpoint: ${{ env.CENTRAL_ENDPOINT }}
           central-token: ${{ env.ROX_API_TOKEN }}
+          skip-tls-verify: true
 
       - name: Scan image with roxctl
         shell: bash
