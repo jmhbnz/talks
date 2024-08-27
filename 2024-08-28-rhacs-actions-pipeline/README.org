@@ -1,0 +1,21 @@
+#+TITLE: Securing supply chain
+#+DATE: <2024-08-28 Wed>
+#+AUTHOR: James Blair
+
+
+Red Hat Advanced Cluster Security can be easily integrated into an existing GitHub actions pipeline through the existing Stackrox suite of [[https://github.com/marketplace?query=stackrox][open source actions]].
+
+An example pipeline would look like:
+
+#+begin_src yaml
+steps:
+  - name: Central login
+    uses: stackrox/central-login@v1
+    with:
+      endpoint: ${{ env.CENTRAL_ENDPOINT }}
+  - name: Install roxctl
+    uses: stackrox/roxctl-installer-action@v1
+    with:
+      central-endpoint: ${{ env.CENTRAL_ENDPOINT }}
+      central-token: ${{ env.ROX_API_TOKEN }}
+#+end_src

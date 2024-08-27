@@ -1,0 +1,1 @@
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime@sha256:4536f1460fd9c75c300b7d0785a282c282d595d1d35f68ba10508b929dd74261
