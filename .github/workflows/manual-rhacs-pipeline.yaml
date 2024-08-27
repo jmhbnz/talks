@@ -55,4 +55,4 @@ jobs:
       - name: Scan image with roxctl
         shell: bash
         run: |
-          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9:v0.0.1"
+          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9:v0.0.1" --insecure-skip-tls-verify

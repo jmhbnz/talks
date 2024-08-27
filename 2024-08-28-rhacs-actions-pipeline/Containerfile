@@ -1,2 +1,2 @@
 #FROM registry.access.redhat.com/ubi9/openjdk-21-runtime@sha256:4536f1460fd9c75c300b7d0785a282c282d595d1d35f68ba10508b929dd74261
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime@sha256:c76659bd657b2d4119733d7f62276417d3375c067ab162202112c2127d9b29e1
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:03d27b5a2df56ceb1f040085de696d594ade2ffa48b6c9bc51ac24b7c5b37b0f

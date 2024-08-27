@@ -5,17 +5,22 @@
 
 Red Hat Advanced Cluster Security can be easily integrated into an existing GitHub actions pipeline through the existing Stackrox suite of [[https://github.com/marketplace?query=stackrox][open source actions]].
 
+* Configure rhacs github oidc auth
+
+Red Hat Advanced Cluster Security for Kubernetes (RHACS) provides the ability to configure short-lived access to the user interface and API calls.
+
+You can configure this by exchanging OpenID Connect (OIDC) identity tokens for a RHACS-issued token.
+
+We recommend this especially for Continuous Integration (CI) usage, where short-lived access is preferable over long-lived API tokens.
+
+Refer: https://docs.openshift.com/acs/4.5/operating/manage-user-access/configure-short-lived-access.html
+
+
+* Create github actions pipeline
+
+
 An example pipeline would look like:
 
 #+begin_src yaml
-steps:
-  - name: Central login
-    uses: stackrox/central-login@v1
-    with:
-      endpoint: ${{ env.CENTRAL_ENDPOINT }}
-  - name: Install roxctl
-    uses: stackrox/roxctl-installer-action@v1
-    with:
-      central-endpoint: ${{ env.CENTRAL_ENDPOINT }}
-      central-token: ${{ env.ROX_API_TOKEN }}
+
 #+end_src
