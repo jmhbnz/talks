@@ -16,8 +16,8 @@ jobs:
       - name: Build image
         uses: redhat-actions/buildah-build@v2
         with:
-          image: quay.io/rh_ee_jablair/ubi9:latest
-          tags: v1 ${{ github.sha }}
+          image: quay.io/rh_ee_jablair/ubi9
+          tags: v0.0.1
           containerfiles: |
             ./2024-08-28-rhacs-actions-pipeline/Containerfile
 
