@@ -32,16 +32,22 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD }}
 
 
-  # scan-image:
-  #   runs-on: ubuntu-latest
+  scan-image:
+    runs-on: ubuntu-latest
+    steps:
 
-  #   steps:
-  #     - name: Central login
-  #       uses: stackrox/central-login@v1
-  #       with:
-  #         endpoint: ${{ env.CENTRAL_ENDPOINT }}
-  #         - name: Install roxctl
-  #           uses: stackrox/roxctl-installer-action@v1
-  #           with:
-  #             central-endpoint: ${{ env.CENTRAL_ENDPOINT }}
-  #             central-token: ${{ env.ROX_API_TOKEN }}
+      - name: Rhacs login
+        uses: stackrox/central-login@v1
+        with:
+          endpoint: ${{ env.CENTRAL_ENDPOINT }}
+
+      - name: Install roxctl
+        uses: stackrox/roxctl-installer-action@v1
+        with:
+          central-endpoint: ${{ env.CENTRAL_ENDPOINT }}
+          central-token: ${{ env.ROX_API_TOKEN }}
+
+      - name: Scan image with roxctl
+        shell: bash
+        run: |
+          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9:v0.0.1"
