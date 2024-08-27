@@ -1,2 +1,8 @@
+# Modern ubi9
 #FROM registry.access.redhat.com/ubi9/openjdk-21-runtime@sha256:4536f1460fd9c75c300b7d0785a282c282d595d1d35f68ba10508b929dd74261
-FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:03d27b5a2df56ceb1f040085de696d594ade2ffa48b6c9bc51ac24b7c5b37b0f
+
+# Middle ground ubi8
+FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:2778e85c6f28969c2b25998cd6e106b7215cdb7e7ca311a13ca4b6adf8545e7f
+
+# Ancient ubi8
+#FROM registry.access.redhat.com/ubi8/openjdk-17-runtime@sha256:03d27b5a2df56ceb1f040085de696d594ade2ffa48b6c9bc51ac24b7c5b37b0f
