@@ -6,7 +6,8 @@ permissions:
 
 jobs:
 
-  build-image:
+  build-and-push-image:
+    name: Build and push image
     runs-on: ubuntu-latest
     steps:
 
@@ -21,8 +22,15 @@ jobs:
           containerfiles: |
             ./2024-08-28-rhacs-actions-pipeline/Containerfile
 
-  # push-image:
-  #   runs-on: ubuntu-latest
+      - name: Push to quay.io
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ubi9
+          tags: v0.0.1
+          registry: quay.io/rh_ee_jablair
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
 
   # scan-image:
   #   runs-on: ubuntu-latest
