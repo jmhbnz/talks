@@ -70,8 +70,8 @@ spec:
     defaultNamespace:
       autoProvision: true
       template: <username>-devspaces
-    maxNumberOfWorkspacesPerUser: 1
-    maxNumberOfRunningWorkspacesPerUser: 1
+    maxNumberOfWorkspacesPerUser: 5
+    maxNumberOfRunningWorkspacesPerUser: 2
     secondsOfInactivityBeforeIdling: 1800
     secondsOfRunBeforeIdling: -1
     security: {}
@@ -102,6 +102,7 @@ EOF
 # Create the configmap with sample json config
 oc create configmap getting-started-samples --from-file=samples.json -n openshift-devspaces
 
+
 # Label the configmap for use by dev spaces
 oc label configmap getting-started-samples app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=getting-started-samples -n openshift-devspaces
 #+end_src
@@ -121,5 +122,20 @@ spec:
   components:
     devfileRegistry:
       disableInternalRegistry: true
+EOF
+#+end_src
+
+
+* Auto install extensions
+
+#+begin_src tmux
+cat << EOF > extensions.json
+{
+    "recommendations": [
+      "redhat.ansible",
+      "redhat.vscode-yaml",
+      "redhat.vscode-redhat-account"
+    ]
+}
 EOF
 #+end_src
