@@ -1,0 +1,149 @@
+#+TITLE: OpenShift Dev Spaces Setup
+#+DATE: <2025-01-24 Fri>
+#+AUTHOR: James Blair
+
+
+* Verify cluster auth status
+
+#+NAMEL: Verify cluster login status
+#+begin_src tmux
+oc status && oc whoami
+#+end_src
+
+
+* Install the dev spaces operator
+
+#+NAME: Install dev spaces operator
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+# Create a dedicated namespace for dev spaces
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-devspaces
+
+---
+# Create an operatorgroup resource for the devspaces namespace
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name:  devspaces-operator-group
+  namespace:  openshift-devspaces
+
+---
+# Create a subscription for the dev spaces operator
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-devspaces
+  namespace: openshift-devspaces
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  name: devspaces
+EOF
+#+end_src
+
+
+* Create the che cluster resource
+
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  name: devspaces
+  namespace: openshift-devspaces
+spec:
+  components:
+    cheServer:
+      debug: false
+      logLevel: INFO
+    dashboard:
+      logLevel: ERROR
+    devWorkspace: {}
+    devfileRegistry: {}
+    imagePuller:
+      enable: false
+      spec: {}
+    metrics:
+      enable: true
+    pluginRegistry: {}
+  containerRegistry: {}
+  devEnvironments:
+    containerBuildConfiguration:
+      openShiftSecurityContextConstraint: container-build
+    defaultNamespace:
+      autoProvision: true
+      template: <username>-devspaces
+    maxNumberOfWorkspacesPerUser: 5
+    maxNumberOfRunningWorkspacesPerUser: 2
+    secondsOfInactivityBeforeIdling: 1800
+    secondsOfRunBeforeIdling: -1
+    security: {}
+    startTimeoutSeconds: 300
+    storage:
+      pvcStrategy: per-user
+  gitServices: {}
+  networking:
+    auth:
+      gateway:
+        configLabels:
+          app: che
+          component: che-gateway-config
+        kubeRbacProxy:
+          logLevel: 0
+        oAuthProxy:
+          cookieExpireSeconds: 86400
+        traefik:
+          logLevel: INFO
+EOF
+#+end_src
+
+
+* Create a custom devfile sample
+
+#+NAME: Create a custom devfile sample
+#+begin_src tmux
+# Create the configmap with sample json config
+oc create configmap getting-started-samples --from-file=samples.json -n openshift-devspaces
+
+
+# Label the configmap for use by dev spaces
+oc label configmap getting-started-samples app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=getting-started-samples -n openshift-devspaces
+#+end_src
+
+
+* Remove default samples
+
+#+NAME: Hide default samples
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  name: devspaces
+  namespace: openshift-devspaces
+spec:
+  components:
+    devfileRegistry:
+      disableInternalRegistry: true
+EOF
+#+end_src
+
+
+* Auto install extensions
+
+#+begin_src tmux
+cat << EOF > extensions.json
+{
+    "recommendations": [
+      "ms-dotnettools.csharp",
+      "redhat.vscode-yaml",
+      "redhat.vscode-redhat-account"
+    ]
+}
+EOF
+#+end_src
