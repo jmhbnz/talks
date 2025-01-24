@@ -79,11 +79,11 @@ spec:
       autoProvision: true
       template: <username>-devspaces
     maxNumberOfWorkspacesPerUser: 5
-    maxNumberOfRunningWorkspacesPerUser: 2
+    maxNumberOfRunningWorkspacesPerUser: 5
     secondsOfInactivityBeforeIdling: 1800
     secondsOfRunBeforeIdling: -1
     security: {}
-    startTimeoutSeconds: 300
+    startTimeoutSeconds: 600
     storage:
       pvcStrategy: per-user
   gitServices: {}
@@ -108,7 +108,7 @@ EOF
 #+NAME: Create a custom devfile sample
 #+begin_src tmux
 # Create the configmap with sample json config
-oc create configmap getting-started-samples --from-file=samples.json -n openshift-devspaces
+oc create configmap getting-started-samples --from-file=samples.json -n openshift-devspaces --dry-run=client --output yaml | oc apply --filename -
 
 
 # Label the configmap for use by dev spaces
