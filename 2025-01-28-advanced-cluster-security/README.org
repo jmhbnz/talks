@@ -1,0 +1,136 @@
+#+TITLE: Red Hat Advanced Cluster Security
+#+DATE: <2025-01-28 Tue>
+#+AUTHOR: James Blair
+
+
+* Initial demo setup
+
+** Verify cluster auth status
+
+#+NAMEL: Verify cluster login status
+#+begin_src tmux
+oc status && oc whoami
+#+end_src
+
+
+** Install the compliance operator
+
+#+NAME: Install openshift compliance operator
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+# Create a dedicated namespace for dev spaces
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-compliance
+
+---
+# Create an operatorgroup resource for the openshift-compliance namespace
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name:  openshift-compliance-8m7b7
+  namespace:  openshift-compliance
+
+---
+# Create a subscription for the compliance operator
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: compliance-operator
+  namespace: openshift-compliance
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  name: compliance-operator
+EOF
+#+end_src
+
+
+** Create compliance scanschedule
+
+#+NAME: Create compliance scan schedule
+#+begin_src tmux
+apiVersion: compliance.openshift.io/v1alpha1
+kind: ComplianceSuite
+metadata:
+  finalizers:
+  - suite.finalizers.compliance.openshift.io
+  name: nist-800-53-daily
+  namespace: openshift-compliance
+spec:
+  scans:
+  - content: ssg-ocp4-ds.xml
+    contentImage: registry.redhat.io/compliance/openshift-compliance-content-rhel8@sha256:b286929357b82f8ff3845f535bab23382bf06f075ff2379063e2456f1a93e809
+    maxRetryOnTimeout: 3
+    name: ocp4-moderate
+    profile: xccdf_org.ssgproject.content_profile_moderate
+    rawResultStorage:
+      pvAccessModes:
+      - ReadWriteOnce
+      rotation: 3
+      size: 1Gi
+    scanTolerations:
+    - operator: Exists
+    scanType: Platform
+    showNotApplicable: false
+    strictNodeScan: false
+    timeout: 30m0s
+  - content: ssg-ocp4-ds.xml
+    contentImage: registry.redhat.io/compliance/openshift-compliance-content-rhel8@sha256:b286929357b82f8ff3845f535bab23382bf06f075ff2379063e2456f1a93e809
+    maxRetryOnTimeout: 3
+    name: ocp4-moderate-node-master
+    nodeSelector:
+      node-role.kubernetes.io/master: ""
+    profile: xccdf_org.ssgproject.content_profile_moderate-node
+    rawResultStorage:
+      pvAccessModes:
+      - ReadWriteOnce
+      rotation: 3
+      size: 1Gi
+    scanTolerations:
+    - operator: Exists
+    scanType: Node
+    showNotApplicable: false
+    strictNodeScan: false
+    timeout: 30m0s
+  - content: ssg-ocp4-ds.xml
+    contentImage: registry.redhat.io/compliance/openshift-compliance-content-rhel8@sha256:b286929357b82f8ff3845f535bab23382bf06f075ff2379063e2456f1a93e809
+    maxRetryOnTimeout: 3
+    name: ocp4-moderate-node-worker
+    nodeSelector:
+      node-role.kubernetes.io/worker: ""
+    profile: xccdf_org.ssgproject.content_profile_moderate-node
+    rawResultStorage:
+      pvAccessModes:
+      - ReadWriteOnce
+      rotation: 3
+      size: 1Gi
+    scanTolerations:
+    - operator: Exists
+    scanType: Node
+    showNotApplicable: false
+    strictNodeScan: false
+    timeout: 30m0s
+  schedule: 0 1 * * *
+  suspend: false
+#+end_src
+
+
+** Authenticate with roxctl
+
+#+NAME: Login to central via roxctl
+#+begin_src tmux
+source .env
+roxctl central login && roxctl central whoami
+#+end_src
+
+* Demo - Identifying vulnerabilities in a workload
+
+#+NAME: Identifying vulnerabilities in a workload
+#+begin_src tmux
+
+
+#+end_src
