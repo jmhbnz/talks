@@ -127,10 +127,54 @@ source .env
 roxctl central login && roxctl central whoami
 #+end_src
 
+
 * Demo - Identifying vulnerabilities in a workload
 
-#+NAME: Identifying vulnerabilities in a workload
+#+NAME: Deploy a workload with interesting cve's
 #+begin_src tmux
+oc apply --filename medical-application --recursive
+#+end_src
+
+#+NAME: Scan a workload image with roxctl
+#+begin_src tmux
+roxctl image scan --image quay.io/rhacs-demo/netflow:latest
+#+end_src
+
+#+NAME: Check a workload image with roxctl
+#+begin_src tmux
+roxctl image check --image quay.io/rhacs-demo/netflow:latest
+#+end_src
 
 
+* Demo - Runtime enforcement to scale down a vulnerable workload
+
+#+NAME: Delete payments processor
+#+begin_src tmux
+oc delete --filename medical-application/payments/everything.yml
+#+end_src
+
+#+NAME: Create payments processor
+#+begin_src tmux
+oc apply --filename medical-application/payments/everything.yml
+#+end_src
+
+#+NAME: Delete vulnerable log4j deployment
+#+begin_src tmux
+oc delete --filename spring4shell-app/deployment.yaml
+#+end_src
+
+#+NAME: Create vulnerable log4j deployment
+#+begin_src tmux
+oc apply --filename spring4shell-app/deployment.yaml
+#+end_src
+
+
+* Demo - Roxctl netpol generate
+
+#+begin_src tmux
+roxctl netpol generate medical-application/payments/everything.yml --output-dir payments-policies --remove
+#+end_src
+
+#+begin_src tmux
+roxctl netpol connectivity map payments-policies --output-format dot
 #+end_src

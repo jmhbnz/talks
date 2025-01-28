@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  labels:
+    network-policy-buildtime-generator.stackrox.io/generated: "true"
+  name: gateway-netpol
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels:
+      app: gateway
+  policyTypes:
+  - Ingress
+  - Egress
