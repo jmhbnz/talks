@@ -1,0 +1,13 @@
+#+TITLE: OpenShift Observability Setup
+#+DATE: <2025-02-03 Mon>
+#+AUTHOR: James Blair
+
+
+* Verify cluster auth status
+
+#+NAMEL: Verify cluster login status
+#+begin_src tmux
+oc status && oc whoami
+#+end_src
+
+
