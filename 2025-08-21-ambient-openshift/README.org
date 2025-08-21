@@ -134,6 +134,10 @@ spec:
   values:
     pilot:
       trustedZtunnelNamespace: ztunnel
+    meshConfig:
+      discoverySelectors:
+      - matchLabels:
+          istio-discovery: enabled
 EOF
 #+end_src
 
@@ -207,6 +211,11 @@ Lastly, we need to deploy the istio ztunnel proxies which are a per-node proxy t
 #+NAME: Deploy istio ztunnel proxies
 #+begin_src bash
 cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ztunnel
+
 ---
 apiVersion: sailoperator.io/v1alpha1
 kind: ZTunnel
@@ -220,6 +229,7 @@ EOF
 
 #+RESULTS: Deploy istio ztunnel proxies
 #+begin_example
+namespace/ztunnel created
 ztunnel.sailoperator.io/default created
 #+end_example
 
@@ -379,9 +389,7 @@ clusterrolebinding.rbac.authorization.k8s.io/kiali-monitoring-rbac created
 
 ** Deploy kiali
 
-Finally - Let's enable the OpenShift Web Console integration for Kiali so we can view the service mesh details in
-
-we can create the Kiali Custom Resource Definition which will be watched by our Kiali Operator and a corresponding instance deployed.
+Finally - Let's enable the OpenShift Web Console integration for Kiali so we can view the service mesh details directly in the OpenShift Web Console!
 
 #+NAME: Deploy kiali console plugin
 #+begin_src bash
@@ -397,3 +405,7 @@ EOF
 #+begin_example
 ossmconsole.kiali.io/ossmconsole created
 #+end_example
+
+Once the console plugin is deployed we should see our workload tagged as ~Ambient~:
+
+[[./kiali-screenshot.png]]
