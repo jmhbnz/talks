@@ -5,6 +5,10 @@
 
 This is a short demonstration of [[https://istio.io/latest/docs/ambient][Istio Ambient Mesh]] on OpenShift ~4.19~ via the [[https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html-single/service_mesh/index][OpenShift Service Mesh]] operator.
 
+You can install Istio ambient mode on OpenShift Container Platform 4.19 or later and Red Hat OpenShift Service Mesh 3.1.0 or later with the required Gateway API custom resource definitions (CRDs).
+
+This is currently a Technology Preview feature of OpenShift.
+
 
 * Pre-requisites
 
@@ -13,9 +17,18 @@ Before we begin, let's ensure we are logged into our cluster in the terminal and
 ** Verify cluster auth status
 
 #+NAMEL: Verify cluster login status
-#+begin_src tmux
+#+begin_src bash
 oc version && oc whoami
 #+end_src
+
+#+RESULTS:
+#+begin_example
+Client Version: 4.19.7
+Kustomize Version: v5.5.0
+Server Version: 4.19.9
+Kubernetes Version: v1.32.7
+admin
+#+end_example
 
 
 ** Upgrade cluster
@@ -74,3 +87,21 @@ spec:
   sourceNamespace: openshift-marketplace
 EOF
 #+end_src
+
+
+Once the operator has completed installation we should see new Custom Resources available for use:
+
+#+NAME: Check sail operator crds
+#+begin_src bash
+oc get crd | grep sail
+#+end_src
+
+#+RESULTS: Check sail operator crds
+| istiocnis.sailoperator.io         | 2025-08-21T00:30:28Z |
+| istiorevisions.sailoperator.io    | 2025-08-21T00:30:28Z |
+| istiorevisiontags.sailoperator.io | 2025-08-21T00:30:29Z |
+| istios.sailoperator.io            | 2025-08-21T00:30:28Z |
+| ztunnels.sailoperator.io          | 2025-08-21T00:30:28Z |
+
+
+* Deploy ambient istio
