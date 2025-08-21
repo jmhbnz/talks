@@ -111,7 +111,6 @@ oc get crd | grep sail
 
 * Deploy ambient istio
 
-
 ** Deploy istio control plane
 
 With the operator installed lets install the istio control plane with the ~ambient~ profile.
@@ -208,25 +207,19 @@ Lastly, we need to deploy the istio ztunnel proxies which are a per-node proxy t
 #+NAME: Deploy istio ztunnel proxies
 #+begin_src bash
 cat << EOF | oc apply --filename -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: ztunnel
-
 ---
 apiVersion: sailoperator.io/v1alpha1
 kind: ZTunnel
 metadata:
   name: default
 spec:
-  namespace: ztunnel
+  namespace: istio-system
   profile: ambient
 EOF
 #+end_src
 
 #+RESULTS: Deploy istio ztunnel proxies
 #+begin_example
-namespace/ztunnel created
 ztunnel.sailoperator.io/default created
 #+end_example
 
@@ -240,4 +233,167 @@ oc wait --for=condition=Ready ztunnel/default --timeout=3m
 #+RESULTS: Wait for istio ztunnel deployment
 #+begin_example
 ztunnel.sailoperator.io/default condition met
+#+end_example
+
+
+* Deploying a sample workload
+
+Once our istio ambient mode mesh is in place, let's deploy a workload. Notice how we include the ~istio.io/dataplane-mode: ambient~ label on our namespace to enrol all workloads in the mesh in our namespace.
+
+#+NAME: Deploy sample workload
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workload
+  labels:
+    istio.io/dataplane-mode: ambient
+EOF
+
+oc apply --namespace workload --filename workload.yaml
+#+end_src
+
+#+RESULTS: Deploy sample workload
+#+begin_example
+namespace/workload created
+deployment.apps/quake created
+service/quake created
+configmap/quake3-server-config created
+#+end_example
+
+
+* Observing the mesh
+
+With istio deployed in ambient mode and a workload enabled, let's validate this by installing [[https://kiali.io][Kiali]] to enable mesh observability.
+
+
+** Installing the kiali operator
+
+To install the operator all we need to do is create a ~Subscription~ resource.
+
+#+NAME: Installing the kiali operator
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kiali-ossm
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: kiali-ossm
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS: Installing the kiali operator
+#+begin_example
+subscription.operators.coreos.com/kiali-ossm created
+#+end_example
+
+
+** Enable cluster user workload monitoring
+
+While the operator is installing let's enable user workload monitoring on our cluster, we'll need this to scrape metrics from our deployed service mesh control plane and ztunnel proxies.
+
+#+NAME: Enable cluster user workload monitoring
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+EOF
+#+end_src
+
+#+RESULTS: Enable cluster user workload monitoring
+#+begin_example
+configmap/cluster-monitoring-config created
+#+end_example
+
+
+** Configure openshift monitoring with service mesh
+
+Let's also ensure that cluster monitoring knows to scrape mesh metrics by creating a ~ServiceMonitor~.
+
+#+NAME: Create service monitor for istio control plane
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istiod-monitor
+  namespace: istio-system
+spec:
+  targetLabels:
+  - app
+  selector:
+    matchLabels:
+      istio: pilot
+  endpoints:
+  - port: http-monitoring
+    interval: 30s
+EOF
+#+end_src
+
+#+RESULTS: Create service monitor for istio control plane
+#+begin_example
+servicemonitor.monitoring.coreos.com/istiod-monitor created
+#+end_example
+
+
+** Assign kiali permissions
+
+With the mesh metrics being scraped by the cluster prometheus instance we are almost ready to deploy Kiali to visualize them. Before we do, let's ensure kiali will have permissions to retrieve cluster monitoring information.
+
+#+NAME: Assign kiali permissions
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kiali-monitoring-rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-monitoring-view
+subjects:
+- kind: ServiceAccount
+  name: kiali-service-account
+  namespace: istio-system
+EOF
+#+end_src
+
+#+RESULTS: Assign kiali permissions
+#+begin_example
+clusterrolebinding.rbac.authorization.k8s.io/kiali-monitoring-rbac created
+#+end_example
+
+
+** Deploy kiali
+
+Finally - Let's enable the OpenShift Web Console integration for Kiali so we can view the service mesh details in
+
+we can create the Kiali Custom Resource Definition which will be watched by our Kiali Operator and a corresponding instance deployed.
+
+#+NAME: Deploy kiali console plugin
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: kiali.io/v1alpha1
+kind: OSSMConsole
+metadata:
+  name: ossmconsole
+EOF
+#+end_src
+
+#+RESULTS: Deploy kiali console plugin
+#+begin_example
+ossmconsole.kiali.io/ossmconsole created
 #+end_example
