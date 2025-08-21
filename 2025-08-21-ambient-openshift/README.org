@@ -1,0 +1,76 @@
+#+TITLE: OpenShift Ambient Mesh Setup
+#+DATE: <2025-08-21 Thu>
+#+AUTHOR: James Blair
+
+
+This is a short demonstration of [[https://istio.io/latest/docs/ambient][Istio Ambient Mesh]] on OpenShift ~4.19~ via the [[https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html-single/service_mesh/index][OpenShift Service Mesh]] operator.
+
+
+* Pre-requisites
+
+Before we begin, let's ensure we are logged into our cluster in the terminal and the cluster meets our version requirements.
+
+** Verify cluster auth status
+
+#+NAMEL: Verify cluster login status
+#+begin_src tmux
+oc version && oc whoami
+#+end_src
+
+
+** Upgrade cluster
+
+The Red Hat demo system environment available was not yet running OpenShift 4.19 so I needed to upgrade it before performing any demo preparation steps.
+
+The first step is to acknowledge the k8s [[https://access.redhat.com/articles/7112216][api deprecations]] between 4.18 and 4.19.
+
+#+NAME: Patch admin acks
+#+begin_src tmux
+oc -n openshift-config patch cm admin-acks --patch '{"data":{"ack-4.18-kube-1.32-api-removals-in-4.19":"true"}}' --type=merge
+#+end_src
+
+
+Once admin acks are in place we can set the upgrade channel to ~fast-.419~.
+
+#+NAME: Set cluster upgrade channel to 4.19
+#+begin_src tmux
+oc adm upgrade channel fast-4.19
+#+end_src
+
+
+Now we're ready to trigger the upgrade.
+
+#+NAME: Trigger the cluster upgrade
+#+begin_src tmux
+oc adm upgrade --to 4.19.9
+#+end_src
+
+
+Before proceeding with any further steps let's wait for the cluster upgrade to complete.
+
+#+NAME: Wait for the upgrade to complete
+#+begin_src tmux
+oc adm wait-for-stable-cluster
+#+end_src
+
+
+* Install service mesh operator
+
+Our first step to prepare the demonstration is to install the service mesh operator.
+
+#+NAME: Create operator subscription
+#+begin_src tmux
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: servicemeshoperator3
+  namespace: openshift-operators
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: servicemeshoperator3
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
