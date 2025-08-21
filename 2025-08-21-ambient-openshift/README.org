@@ -72,7 +72,7 @@ oc adm wait-for-stable-cluster
 Our first step to prepare the demonstration is to install the service mesh operator.
 
 #+NAME: Create operator subscription
-#+begin_src tmux
+#+begin_src bash
 cat << EOF | oc apply --filename -
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
@@ -87,6 +87,11 @@ spec:
   sourceNamespace: openshift-marketplace
 EOF
 #+end_src
+
+#+RESULTS: Create operator subscription
+#+begin_example
+subscription.operators.coreos.com/servicemeshoperator3 created
+#+end_example
 
 
 Once the operator has completed installation we should see new Custom Resources available for use:
@@ -105,3 +110,134 @@ oc get crd | grep sail
 
 
 * Deploy ambient istio
+
+
+** Deploy istio control plane
+
+With the operator installed lets install the istio control plane with the ~ambient~ profile.
+
+#+NAME Install istio control plane
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+
+---
+apiVersion: sailoperator.io/v1
+kind: Istio
+metadata:
+  name: default
+spec:
+  namespace: istio-system
+  profile: ambient
+  values:
+    pilot:
+      trustedZtunnelNamespace: ztunnel
+EOF
+#+end_src
+
+#+RESULTS:
+#+begin_example
+namespace/istio-system created
+istio.sailoperator.io/default created
+#+end_example
+
+
+Once the custom resources are created we can wait for the istio control plane deployment to become ready.
+
+#+NAME: Wait for istio control plane deployment
+#+begin_src bash
+oc wait --for=condition=Ready istios/default --timeout=3m
+#+end_src
+
+#+RESULTS: Wait for istio control plane deployment
+#+begin_example
+istio.sailoperator.io/default condition met
+#+end_example
+
+
+** Deploy istio container network interface
+
+Once the control plane is in place we'll create the corresponding networking components, again with the profile ~ambient~.
+
+#+NAME: Deploy istio cni
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-cni
+
+---
+apiVersion: sailoperator.io/v1
+kind: IstioCNI
+metadata:
+  name: default
+spec:
+  namespace: istio-cni
+  profile: ambient
+EOF
+#+end_src
+
+#+RESULTS: Deploy istio cni
+#+begin_example
+namespace/istio-cni created
+istiocni.sailoperator.io/default created
+#+end_example
+
+
+As we did earlier, after creating the custom resources we can wait for the components to become ready.
+
+#+NAME: Wait for istio cni deployment
+#+begin_src bash
+oc wait --for=condition=Ready istios/default --timeout=3m
+#+end_src
+
+#+RESULTS: Wait for istio cni deployment
+#+begin_example
+istio.sailoperator.io/default condition met
+#+end_example
+
+
+** Deploy istio ztunnel proxies
+
+Lastly, we need to deploy the istio ztunnel proxies which are a per-node proxy that manages secure, transparent tcp connections for all workloads on the node. Once again these will be deployed with the ~ambient~ profile.
+
+#+NAME: Deploy istio ztunnel proxies
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ztunnel
+
+---
+apiVersion: sailoperator.io/v1alpha1
+kind: ZTunnel
+metadata:
+  name: default
+spec:
+  namespace: ztunnel
+  profile: ambient
+EOF
+#+end_src
+
+#+RESULTS: Deploy istio ztunnel proxies
+#+begin_example
+namespace/ztunnel created
+ztunnel.sailoperator.io/default created
+#+end_example
+
+And again let's wait to verify that these have deployed successfully before proceeding.
+
+#+NAME: Wait for istio ztunnel deployment
+#+begin_src bash
+oc wait --for=condition=Ready ztunnel/default --timeout=3m
+#+end_src
+
+#+RESULTS: Wait for istio ztunnel deployment
+#+begin_example
+ztunnel.sailoperator.io/default condition met
+#+end_example
