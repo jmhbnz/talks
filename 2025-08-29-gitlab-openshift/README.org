@@ -1,0 +1,170 @@
+#+TITLE: Gitlab installation
+#+DATE: <2025-08-29 Fri>
+#+AUTHOR: James Blair
+
+
+A short guide on installing GitLab in OpenShift ~4.19~.
+
+
+* Pre-requisites
+
+Before we begin, let's ensure we are logged into our cluster in the terminal and the cluster meets our version requirements.
+
+** Verify cluster auth status
+
+#+NAME: Verify cluster login status
+#+begin_src bash
+oc version && oc whoami
+#+end_src
+
+#+RESULTS: Verify cluster login status
+#+begin_example
+Client Version: 4.19.9
+Kustomize Version: v5.5.0
+Server Version: 4.19.9
+Kubernetes Version: v1.32.7
+admin
+#+end_example
+
+
+** Ensure cert manager is installed
+
+A pre-requisite for GitLab is having cert manager installed.
+
+#+NAME: Create cert manager operator subscription
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-cert-manager-operator
+  namespace: cert-manager-operator
+spec:
+  channel: stable-v1
+  installPlanApproval: Automatic
+  name: openshift-cert-manager-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+EOF
+#+end_src
+
+#+RESULTS: Create cert manager operator subscription
+#+begin_example
+subscription.operators.coreos.com/openshift-cert-manager-operator created
+#+end_example
+
+
+* Install gitlab operator
+
+Everything we deploy relating to GitLab will be via the [[https://docs.gitlab.com/operator][GitLab Operator]]. Our first step is to create a ~Subscription~ that will install the Operator on our OpenShift cluster.
+
+#+NAME: Create operator subscription
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitlab-system
+
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: gitlab-operator-kubernetes
+  namespace: gitlab-system
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: gitlab-operator-kubernetes
+  source: certified-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: gitlab-operator-kubernetes.v2.3.1
+EOF
+#+end_src
+
+#+RESULTS: Create operator subscription
+#+begin_example
+namespace/gitlab-system created
+subscription.operators.coreos.com/gitlab-operator-kubernetes created
+#+end_example
+
+
+* Create gitlab instance
+
+Once the operator is installed we can create an instance of GitLab using the newly available ~GitLab~ CRD, a basic example is below:
+
+#+NAME: Create gitlab instance
+#+begin_src bash
+cat << EOF | oc apply --filename -
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  namespace: gitlab-system
+spec:
+  chart:
+    version: "9.3.1"
+    values:
+      certmanager:
+        install: false
+      certmanager-issuer:
+        email: "nobody@nowhere.nosite"
+      global:
+        hosts:
+          domain: $(oc get ingress.config.openshift.io cluster --output jsonpath={'.spec.domain'})
+        ingress:
+          annotations:
+            route.openshift.io/termination: edge
+          class: none
+          configureCertmanager: true
+          tls:
+            secretName: null
+      nginx-ingress:
+        install: false
+        enabled: false
+      prometheus:
+        install: false
+EOF
+#+end_src
+
+#+RESULTS: Create gitlab instance
+#+begin_example
+gitlab.apps.gitlab.com/gitlab created
+#+end_example
+
+
+We can wait for the gitlab deployment to become ready by checking the condition of the ~Gitlab~ custom resource.
+
+#+NAME: Wait for gitlab deployment
+#+begin_src bash
+oc --namespace gitlab-system wait --for=condition=Available gitlab/gitlab --timeout=3m
+#+end_src
+
+#+RESULTS: Wait for gitlab deployment
+#+begin_example
+gitlab.apps.gitlab.com/gitlab condition met
+#+end_example
+
+
+* Log into gitlab
+
+Once the gitlab instance is ~Available~ we can retrieve the ~Ingress~ hostname and login!
+
+#+NAME: Retrive gitlab url
+#+begin_src bash
+echo "https://"$(oc get ingress --namespace gitlab-system gitlab-webservice-default --output jsonpath={'.spec.tls[0].hosts[0]'})
+#+end_src
+
+#+RESULTS: Retrive gitlab url
+#+begin_example
+https://gitlab.apps.cluster-x99pc.dynamic.redhatworkshops.io
+#+end_example
+
+#+NAME: Retrieve gitlab credentials
+#+begin_src bash
+oc get secret --namespace gitlab-system gitlab-gitlab-initial-root-password --output jsonpath={'.data.password'} | base64 --decode | wl-copy
+#+end_src
+
+#+RESULTS: Retrieve gitlab credentials
+#+begin_example
+#+end_example
