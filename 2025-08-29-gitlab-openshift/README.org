@@ -67,6 +67,17 @@ metadata:
   name: gitlab-system
 
 ---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: gitlab-og
+  namespace: gitlab-system
+spec:
+  targetNamespaces:
+  - gitlab-system
+  upgradeStrategy: Default
+
+---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -84,8 +95,9 @@ EOF
 
 #+RESULTS: Create operator subscription
 #+begin_example
-namespace/gitlab-system created
-subscription.operators.coreos.com/gitlab-operator-kubernetes created
+namespace/gitlab-system unchanged
+operatorgroup.operators.coreos.com/gitlab-og created
+subscription.operators.coreos.com/gitlab-operator-kubernetes unchanged
 #+end_example
 
 
