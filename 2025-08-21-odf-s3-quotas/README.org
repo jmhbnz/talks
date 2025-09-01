@@ -1,0 +1,112 @@
+#+TITLE: Object Storage Quotas
+#+DATE: <2025-08-21 Thu>
+#+AUTHOR: James Blair
+
+
+So you've got OpenShift Data Foundations installed in your OpenShift cluster and now you've got tenants of your clusters clamouring to consume object storage.
+
+This short write-up will explain how to give each tenant a safe quota of storage they can consume.
+
+
+* Pre-requisites
+
+Before we begin, let's ensure we are logged into our cluster in the terminal and the cluster meets our version requirements.
+
+** Verify cluster auth status
+
+#+NAME: Verify cluster login status
+#+begin_src bash
+oc version && oc whoami
+#+end_src
+
+#+RESULTS: Verify cluster login status
+#+begin_example
+Client Version: 4.19.7
+Kustomize Version: v5.5.0
+Server Version: 4.19.9
+Kubernetes Version: v1.32.7
+admin
+#+end_example
+
+
+** Verify odf storage installed
+
+#+NAME: Verify storage system state
+#+begin_src bash
+oc get crd | grep noobaa
+#+end_src
+
+#+RESULTS: Verify storage system state
+#+begin_example
+backingstores.noobaa.io                                           2025-08-20T22:36:51Z
+bucketclasses.noobaa.io                                           2025-08-20T22:36:50Z
+namespacestores.noobaa.io                                         2025-08-20T22:36:51Z
+noobaaaccounts.noobaa.io                                          2025-08-20T22:36:51Z
+noobaas.noobaa.io                                                 2025-08-20T22:36:51Z
+#+end_example
+
+
+* Create a sample tenant
+
+Let's create an example tenant project called ~storage-tenant~ that a separate user on our cluster called ~user1~ will own.
+
+#+NAME: Create tenant namespace
+#+begin_src bash
+cat << EOF | oc apply --user admin --filename -
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  annotations:
+    openshift.io/requester: user1
+  name: storage-tenant
+
+EOF
+#+end_src
+
+#+RESULTS: Create tenant namespace
+#+begin_example
+project.project.openshift.io/storage-tenant created
+#+end_example
+
+
+Once the project is created we'll run a quick ~oc adm~ command to ensure ~user1~ has full privileges within the project.
+
+#+NAME: Assign project permissions
+#+begin_src bash
+oc --user admin adm policy add-role-to-user admin user1 --namespace storage-tenant
+#+end_src
+
+#+RESULTS: Assign project permissions
+#+begin_example
+clusterrole.rbac.authorization.k8s.io/admin added: "user1"
+#+end_example
+
+
+* Create a custom bucket class
+
+#+NAME: Create custom bucket class
+#+begin_src bash
+cat << EOF | oc --user admin apply --filename -
+apiVersion: noobaa.io/v1alpha1
+kind: BucketClass
+metadata:
+  finalizers:
+  - noobaa.io/finalizer
+  labels:
+    app: noobaa
+  name: custom-tenant-bucket-class
+  namespace: openshift-storage
+spec:
+  placementPolicy:
+    tiers:
+    - backingStores:
+      - noobaa-default-backing-store
+  quota:
+    maxSize: 1Gi
+EOF
+#+end_src
+
+#+RESULTS: Create custom bucket class
+#+begin_example
+bucketclass.noobaa.io/custom-tenant-bucket-class created
+#+end_example
