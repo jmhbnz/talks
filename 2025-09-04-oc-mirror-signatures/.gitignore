@@ -1,0 +1,7 @@
+pull-secret*
+content/
+oc-mirror
+.oc-mirror*
+docker
+working-dir
+isc*

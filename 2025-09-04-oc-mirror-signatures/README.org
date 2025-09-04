@@ -1,0 +1,176 @@
+#+TITLE: Mirror openshift image signatures
+#+DATE: <2025-09-04 Thu>
+#+AUTHOR: James Blair
+
+
+This short write-up will explain how to use the ~oc-mirror~ utility new feature to mirror cosign signatures for openshift release images.
+
+
+* Pre-requisites
+
+Before we begin, let's ensure we have the ~oc-mirror~ utility, we can download this from the public openshift mirrors.
+
+** Install oc-mirror
+
+#+NAME: Install oc-mirror
+#+begin_src bash
+wget https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.rhel9.tar.gz
+tar xf oc-mirror.rhel9* && rm oc-mirror.rhel9*
+chmod +x oc-mirror && ls -lah
+./oc-mirror --v2 version --output yaml
+#+end_src
+
+#+RESULTS: Install oc-mirror
+#+begin_example
+[0] Downloading 'https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.rhel9.tar.gz' ...
+Saving 'oc-mirror.rhel9.tar.gz'
+HTTP response 200  [https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/oc-mirror.rhel9.tar.gz]
+total 293M
+drwxr-xr-x. 1 james james   66 Sep  4 13:36 .
+drwxr-xr-x. 1 james james 1.3K Sep  4 13:27 ..
+-rwxr-x--x. 1 james james 293M Aug 27 04:03 oc-mirror
+-rw-------. 1 james james  486 Sep  4 13:35 .oc-mirror.log
+-rw-r--r--. 1 james james 1.2K Sep  4 13:36 README.org
+clientVersion:
+  buildDate: "2025-08-26T16:02:04Z"
+  compiler: gc
+  gitCommit: 44400131ce00a1710bb91eba860cc6b6da5b1ee7
+  gitTreeState: clean
+  gitVersion: 4.19.0-202508260738.p2.g4440013.assembly.stream.el9-4440013
+  goVersion: go1.23.9 (Red Hat 1.23.9-1.el9_6) X:strictfipsruntime
+  major: ""
+  minor: ""
+  platform: linux/amd64
+
+#+end_example
+
+
+** Authenticate to redhat registry
+
+In order to mirror content we also need to ensure we have authenticated with the [[https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/disconnected_environments/mirroring-in-disconnected-environments#installation-adding-registry-pull-secret_about-installing-oc-mirror-v2][Red Hat Container Registries]].
+
+#+NAME: Authenticate to registry
+#+begin_src bash
+# Download pull secret from https://console.redhat.com/openshift/install/pull-secret
+
+cat ./pull-secret | jq . > pull-secret.json && ls -lah pull*
+#+end_src
+
+#+RESULTS: Authenticate to registry
+#+begin_example
+-rw-r--r--. 1 james james 2.8K Sep  4 14:09 pull-secret
+-rw-r--r--. 1 james james 2.9K Sep  4 14:16 pull-secret.json
+#+end_example
+
+
+* Creating a mirror configuration
+
+Once we have the ~oc-mirror~ utility we need to instruct it what to do. Weo do this by creating an image set configuration file. This image set configuration file defines which OpenShift Container Platform releases, Operators, and other images to mirror, along with other configuration settings for the oc-mirror plugin v2.
+
+For the purposes of this exercise let's just mirror a single image ~registry.redhat.io/ubi9/ubi~.
+
+#+NAME: Create imagesetconfiguration
+#+begin_src bash
+cat << EOF > ImageSetConfiguration.yaml
+---
+kind: ImageSetConfiguration
+apiVersion: mirror.openshift.io/v2alpha1
+mirror:
+  additionalImages:
+    - name: registry.redhat.io/ubi9/ubi:latest
+
+EOF
+ls -lah Image*
+#+end_src
+
+#+RESULTS: Create imagesetconfiguration
+#+begin_example
+-rw-r--r--. 1 james james 149 Sep  4 16:53 ImageSetConfiguration.yaml
+#+end_example
+
+
+* Mirror content to disk
+
+With our ~ImageSetConfiguration.yaml~ file ready we can go ahead and run the ~oc-mirror~ utility to mirror content to disk.
+
+ #+NAME: Mirror content to disk
+#+begin_src bash
+./oc-mirror --authfile pull-secret.json --config ImageSetConfiguration.yaml --v2 --remove-signatures=false file://content
+#+end_src
+
+#+RESULTS: Mirror content to disk
+#+begin_example
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔀 workflow mode: mirrorToDisk
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🕵  going to discover the necessary images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔍 collecting release images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔍 collecting operator images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔍 collecting additional images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔍 collecting helm images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🔂 rebuilding catalogs
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 🚀 Start copying the images...
+2025/09/04 16:53:50 [1;94m [INFO] [0m  : 📌 images to copy 1
+2025/09/04 16:55:29 [1;94m [INFO] [0m  : Success copying registry.redhat.io/ubi9/ubi:latest ➡️ cache
+2025/09/04 16:55:29 [1;94m [INFO] [0m  : === Results ===
+2025/09/04 16:55:29 [1;94m [INFO] [0m  : [1;92m ✓ [0m 1 / 1 additional images mirrored successfully
+2025/09/04 16:55:29 [1;94m [INFO] [0m  : 📦 Preparing the tarball archive...
+2025/09/04 16:55:30 [1;94m [INFO] [0m  : mirror time     : 1m40.211444371s
+2025/09/04 16:55:30 [1;94m [INFO] [0m  : 👋 Goodbye, thank you for using oc-mirror
+#+end_example
+
+
+* Examine mirrored content
+
+With the mirror process complete, let's take a look at the logs and confirm ~.sig~ entries for signatures being retrieved and included in our archive.
+
+#+NAME: Examine mirrored content
+#+begin_src bash
+echo Review the created archive
+ls -lah content/mirror*
+
+echo
+echo Review logs for signatures being downloaded
+cat content/working-dir/logs/registry.log | grep .sig | tail -n 1
+#+end_src
+
+#+RESULTS: Examine mirrored content
+#+begin_example
+Review the created archive
+-rw-r--r--. 1 james james 307M Sep  4 16:55 content/mirror_000001.tar
+
+Review logs for signatures being downloaded
+time="2025-09-04T16:55:29.990612444+12:00" level=info msg="response completed" go.version="go1.23.9 (Red Hat 1.23.9-1.el9_6) X:strictfipsruntime" http.request.contenttype=application/vnd.oci.image.manifest.v1+json http.request.host="localhost:55000" http.request.id=5b17d7b9-05a9-4c61-b368-d614ceb2e1cb http.request.method=PUT http.request.remoteaddr="[::1]:37772" http.request.uri=/v2/ubi9/ubi/manifests/sha256-8f1496d50a66e41433031bf5bdedd4635520e692ccd76ffcb649cf9d30d669af.sig http.request.useragent=oc-mirror http.response.duration=13.876097ms http.response.status=201 http.response.written=0 service=registry vars.name=ubi9/ubi vars.reference=sha256-8f1496d50a66e41433031bf5bdedd4635520e692ccd76ffcb649cf9d30d669af.sig
+#+end_example
+
+
+* Upload signatures
+
+Once content has been mirrored to disk, we then want to upload it to our internal container registry. For the purposes of this example I will use a ~quay.io~ registry to represent the internal registry, but any OCI compliant registry should work.
+
+#+NAME: Mirror and verify content
+#+begin_src bash
+./oc-mirror --config ImageSetConfiguration.yaml --v2 --remove-signatures=false --secure-policy=true --from file://content docker://quay.io/rh_ee_jablair
+#+end_src
+
+#+RESULTS: Mirror and verify content
+#+begin_example
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🔀 workflow mode: diskToMirror
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 📦 Extracting mirror archive(s)...
+Extracting chunk file (1 / 1): content/mirror_000001.tar
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🕵  going to discover the necessary images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🔍 collecting release images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🔍 collecting operator images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🔍 collecting additional images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🔍 collecting helm images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 🚀 Start copying the images...
+2025/09/04 17:11:19 [1;94m [INFO] [0m  : 📌 images to copy 1
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : Success copying registry.redhat.io/ubi9/ubi:latest ➡️ quay.io/rh_ee_jablair/ubi9/
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : === Results ===
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : [1;92m ✓ [0m 1 / 1 additional images mirrored successfully
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : 📄 No images by digests were mirrored. Skipping IDMS generation.
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : 📄 Generating ITMS file...
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : content/working-dir/cluster-resources/itms-oc-mirror.yaml file created
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : 📄 No catalogs mirrored. Skipping CatalogSource file generation.
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : 📄 No catalogs mirrored. Skipping ClusterCatalog file generation.
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : mirror time     : 9m42.33250357s
+2025/09/04 17:21:01 [1;94m [INFO] [0m  : 👋 Goodbye, thank you for using oc-mirror
+#+end_example
