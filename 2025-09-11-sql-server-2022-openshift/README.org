@@ -1,0 +1,177 @@
+#+TITLE: Deploy sql server on openshift
+#+DATE: <2025-09-11 Thu>
+#+AUTHOR: James Blair
+
+
+This short write-up will explain how to deploy single instance SQL Sever ~2022~ databases on OpenShift for the purposes of rapid proof of concepts.
+
+
+* Pre-requisites
+
+Before we begin let's ensure we are logged into our cluster.
+
+#+NAME: Check oc status
+#+begin_src bash
+oc whoami && oc version
+#+end_src
+
+#+RESULTS: Check oc status
+#+begin_example
+cluster-admin
+Client Version: 4.19.10
+Kustomize Version: v5.5.0
+Server Version: 4.17.37
+Kubernetes Version: v1.30.14
+#+end_example
+
+
+* Create database pvc
+
+Our database will use persistent storage to ensure the database contents are not lost between restarts, we can request by creating a ~PersistentVolumeClaim~ resource.
+
+#+NAME: Create database pvc
+#+begin_src bash
+cat << EOF | oc --namespace sql-server apply --filename -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-data
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+EOF
+#+end_src
+
+#+RESULTS: Create database pvc
+#+begin_example
+persistentvolumeclaim/mssql-data created
+#+end_example
+
+
+* Create database credential
+
+We also need to supply credentials for our database to be created with, we can do this by creating a ~Secret~ resource.
+
+#+NAME: Create database credential
+#+begin_src bash
+cat << EOF | oc --namespace sql-server apply --filename -
+apiVersion: v1
+data:
+  SA_PASSWORD: U1FMU2VydmVyMjAyMk9uT0NQ
+kind: Secret
+metadata:
+  name: mssql
+EOF
+#+end_src
+
+#+RESULTS: Create database credential
+#+begin_example
+secret/mssql created
+#+end_example
+
+
+* Create database deployment
+
+With our pre-requisites in place we can create our database ~Deployment~.
+
+#+NAME: Create database deployment
+#+begin_src bash
+cat << EOF | oc --namespace sql-server apply --filename -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mssql-deployment
+spec:
+  selector:
+    matchLabels:
+      app: mssql
+  template:
+    metadata:
+      labels:
+        app: mssql
+    spec:
+      containers:
+        - name: mssql
+          image: mcr.microsoft.com/mssql/rhel/server:2022-CU13-rhel-9.1
+          securityContext:
+            capabilities:
+              add: ["NET_BIND_SERVICE"]
+          ports:
+            - containerPort: 1433
+          env:
+            - name: MSSQL_PID
+              value: "Developer"
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mssql
+                  key: SA_PASSWORD
+          volumeMounts:
+            - name: mssqldb
+              mountPath: /var/opt/mssql
+      volumes:
+        - name: mssqldb
+          persistentVolumeClaim:
+            claimName: mssql-data
+EOF
+#+end_src
+
+#+RESULTS: Create database deployment
+#+begin_example
+deployment.apps/mssql-deployment created
+#+end_example
+
+
+* Create database service
+
+Once the database is running we can expose it for use within our cluster by creating a ~Service~. Other pods we deploy in the namespace will be able to reach the database using the service name ~mssql-service~ and the appropriate port.
+
+#+NAME: Create database service
+#+begin_src bash
+cat << EOF | oc --namespace sql-server apply --filename -
+apiVersion: v1
+kind: Service
+metadata:
+  name: mssql-service
+spec:
+  selector:
+    app: mssql
+  ports:
+    - protocol: TCP
+      port: 31433
+      targetPort: 1433
+  type: ClusterIP
+EOF
+#+end_src
+
+#+RESULTS: Create database service
+#+begin_example
+service/mssql-service created
+#+end_example
+
+
+* Confirm database running
+
+Finally - we can validate the database is running by executing ~sqlcmd~ within the database pod.
+
+#+NAME: Test database running
+#+begin_src bash
+oc --namespace sql-server exec $(oc --namespace sql-server get pods --output name) -- /opt/mssql-tools/bin/sqlcmd -Usa -PSQLServer2022OnOCP -q "SELECT name FROM sys.databases"
+#+end_src
+
+#+RESULTS: Test database running
+#+begin_example
+name
+--------------------------------------------------------------------------------------------------------------------------------
+master
+tempdb
+model
+msdb
+
+(4 rows affected)
+#+end_example
