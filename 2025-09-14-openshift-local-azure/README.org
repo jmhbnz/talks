@@ -1,0 +1,131 @@
+#+TITLE: Deploy openshift local on azure
+#+DATE: <2025-09-14 Sun>
+#+AUTHOR: James Blair
+
+
+This short write-up will explain how to deploy [[https://developers.redhat.com/products/openshift-local/overview][OpenShift Local]] on a Microsoft Azure Virtual Machine via nested virtualization.
+
+
+* Pre-requisites
+
+Before we begin let's ensure we have the ~az~ [[https://github.com/Azure/azure-cli][Azure CLI]] installed. In my case I installed this via ~brew~.
+
+#+NAME: Check ac status
+#+begin_src bash
+az version --output table
+#+end_src
+
+#+RESULTS: Check ac status
+#+begin_example
+Azure-cli    Azure-cli-core    Azure-cli-telemetry
+-----------  ----------------  ---------------------
+2.77.0       2.77.0            1.1.0
+#+end_example
+
+
+Once the CLI is installed we need to ensure we have authenticated with Azure in our terminal. This guide assumes you have an existing Azure account.
+
+#+NAME: Login to azure
+#+begin_src bash
+az login
+#+end_src
+
+
+Lastly, after logging in this guide assumes you will already have an appropriate Azure [[https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/overview#resource-groups][Resource Group]] available to create the virtual machine within. You can check your Azure resource groups as follows.
+
+#+NAME: Check resource groups
+#+begin_src bash
+az group list --output table
+#+end_src
+
+#+RESULTS: Check resource groups
+#+begin_example
+Name              Location    Status
+----------------  ----------  ---------
+openenv-jldt6     eastus      Succeeded
+NetworkWatcherRG  eastus      Succeeded
+aro-asl4w0j5      eastus      Succeeded
+#+end_example
+
+
+* Create azure virtual machine
+
+Update the variables below and run the ~az vm create~ command to create the new virtual machine.
+
+One of the crucial aspects of this command is the ~--size~ parameter which is ensuring we will provision a virtual machine that supports **Nested Virtualization**.
+
+Additionally we need to ensure the machine has at least ~30Gi~ disk free for the OpenShift Local installation.
+
+#+NAME: Create azure virtual machine
+#+begin_src bash
+vmname="openshift-local"
+username="openshift"
+resourcegroup="openenv-jldt6"
+location="eastus"
+az vm create \
+    --resource-group "${resourcegroup}" \
+    --name "${vmname}" \
+    --image "RHELRaw8LVMGen2" \
+    --public-ip-sku Standard \
+    --admin-username "${username}" \
+    --size "Standard_D8_v5" \
+    --ssh-key-values ~/.ssh/james.pub \
+    --os-disk-size-gb 128
+#+end_src
+
+#+RESULTS: Create azure virtual machine
+#+begin_example
+{
+  "fqdns": "",
+  "id": "/subscriptions/b9c5c8e5-1ac1-43a5-9d6b-1c9f4ff1cd1c/resourceGroups/openenv-jldt6/providers/Microsoft.Compute/virtualMachines/openshift-local",
+  "location": "eastus",
+  "macAddress": "00-0D-3A-9B-FB-38",
+  "powerState": "VM running",
+  "privateIpAddress": "10.0.0.10",
+  "publicIpAddress": "172.171.221.17",
+  "resourceGroup": "openenv-jldt6"
+}
+#+end_example
+
+
+* Connect to virtual machine
+
+Once the machine is running we can connect to it via the ~az cli~ as follows.
+
+Note: Depending on the azure vnet configuration in your environment you may need to configure network security settings to enable connectivity to the machine on port ~22~.
+
+#+NAME: Connect to vm
+#+begin_src bash
+az ssh vm --ip <ip address>
+#+end_src
+
+
+* Install openshift local
+
+Once we've connected to our machine we need to download OpenShift Local and extract it.
+
+#+NAME: Download openshift local
+#+begin_src bash
+wget https://developers.redhat.com/content-gateway/rest/mirror/pub/openshift-v4/clients/crc/latest/crc-linux-amd64.tar.xz
+tar xf crc-linux-amd64.tar.xz
+#+end_src
+
+
+With the ~crc~ binary downloaded and extracted let's run the setup subcommand.
+
+#+NAME: Setup openshift local
+#+begin_src bash
+./crc-linux-2.54.0-amd64/crc setup
+#+end_src
+
+
+* Launch openshift local
+
+Once the setup process completes, we can launch OpenShift Local as follows.
+
+Note: The initial launch can take ~15 minutes to complete as the cluster setup is performed.
+
+#+NAME
+#+begin_src bash
+./crc-linux-2.54.0-amd64/crc start
+#+end_src
