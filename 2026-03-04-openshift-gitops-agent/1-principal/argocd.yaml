@@ -1,0 +1,41 @@
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  controller:
+    enabled: false
+  # This could be enabled but would need to be configured
+  # to support AppSets in Any Namespace
+  applicationSet:
+    enabled: false
+  argoCDAgent:
+    principal:
+      allowedNamespaces:
+        # Important, namespace for each agent must be here
+        - crl-cer-1
+      enabled: true
+      image: 'quay.io/argoprojlabs/argocd-agent:v0.7.0'
+      jwtAllowGenerate: true
+      auth: mtls:CN=([^,]+)
+  sourceNamespaces:
+    - crl-cer-1
+  rbac:
+    defaultPolicy: ""
+    policy: |
+      g, system:cluster-admins, role:admin
+      g, cluster-admins, role:admin
+    scopes: '[groups]'
+  redis:
+    enabled: true
+  repo:
+    enabled: true
+  server:
+    route:
+      enabled: true
+  sso:
+    dex:
+      openShiftOAuth: true
+    provider: dex

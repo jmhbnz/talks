@@ -1,0 +1,23 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bgd-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/background
+spec:
+  destination:
+    namespace: bgd-dev
+    name: in-cluster
+  source:
+    path: bgd/base
+    repoURL: https://github.com/gitops-examples/getting-started
+    targetRevision: HEAD
+  project: crl-cer
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

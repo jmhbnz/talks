@@ -1,0 +1,394 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-agent-agent
+  namespace: argocd
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-agent-agent
+  namespace: argocd
+rules:
+  - apiGroups: [argoproj.io]
+    resources:
+      - applications
+      - appprojects
+      - applicationsets
+    verbs: [create, get, list, watch, update, delete, patch]
+
+  - apiGroups: [""]
+    resources:
+      - secrets
+      - configmaps
+    verbs: [create, get, list, watch, update, delete, patch]
+
+  - apiGroups: [""]
+    resources:
+      - events
+    verbs: [create, list]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-agent-agent
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+    verbs: [create, get, list, watch]
+
+  - apiGroups: [argoproj.io]
+    resources:
+      - applications
+    verbs: [create, get, list, watch, update, delete, patch]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-agent-agent
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-agent-agent
+subjects:
+  - kind: ServiceAccount
+    name: argocd-agent-agent
+    namespace: argocd
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agent-application-controller-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: argocd
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-agent-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-agent-agent
+subjects:
+  - kind: ServiceAccount
+    name: argocd-agent-agent
+    namespace: argocd
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: agent-application-controller-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: argocd-argocd-application-controller
+    namespace: argocd
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-agent-params
+  namespace: argocd
+data:
+  agent.allowed-namespaces: ""
+  agent.compression.enable: "false"
+  agent.create-namespace: "false"
+  agent.creds: mtls:CN=([^,]+)
+  agent.destination-based-mapping: "false"
+  agent.healthz.port: "8002"
+  agent.keep-alive.interval: "0"
+  agent.log.format: text
+  agent.log.level: info
+  agent.metrics.port: "8181"
+  agent.mode: autonomous
+  agent.namespace: argocd
+  agent.pprof.port: "0"
+  agent.redis.address: argocd-redis:6379
+  agent.resource-proxy.enable: "true"
+  agent.server.address: argocd-agent-principal-argocd.apps.$SUBDOMAIN
+  agent.server.port: "443"
+  agent.tls.ciphersuites: ""
+  agent.tls.client.cert-path: ""
+  agent.tls.client.insecure: "false"
+  agent.tls.client.key-path: ""
+  agent.tls.insecure-plaintext: "false"
+  agent.tls.max-version: ""
+  agent.tls.min-version: ""
+  agent.tls.root-ca-path: ""
+  agent.tls.root-ca-secret-name: argocd-agent-ca
+  agent.tls.secret-name: argocd-agent-client-tls
+  agent.websocket.enable: "false"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-agent-healthz
+  namespace: argocd
+spec:
+  ports:
+    - name: healthz
+      port: 8002
+      protocol: TCP
+      targetPort: 8002
+  selector:
+    app.kubernetes.io/name: argocd-agent-agent
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-agent-metrics
+  namespace: argocd
+spec:
+  ports:
+    - name: metrics
+      port: 8181
+      protocol: TCP
+      targetPort: 8181
+  selector:
+    app.kubernetes.io/name: argocd-agent-agent
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: argocd-agent-agent
+  name: argocd-agent-agent
+  namespace: argocd
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-agent-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-agent-agent
+    spec:
+      containers:
+      - args:
+        - agent
+        env:
+        - name: ARGOCD_AGENT_REMOTE_SERVER
+          valueFrom:
+            configMapKeyRef:
+              key: agent.server.address
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_REMOTE_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.server.port
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              key: agent.log.level
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_NAMESPACE
+          valueFrom:
+            configMapKeyRef:
+              key: agent.namespace
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_SECRET_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.secret-name
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_CLIENT_CERT_PATH
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.client.cert-path
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_CLIENT_KEY_PATH
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.client.key-path
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_INSECURE
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.client.insecure
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_ROOT_CA_SECRET_NAME
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.root-ca-secret-name
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_ROOT_CA_PATH
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.root-ca-path
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_MIN_VERSION
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.min-version
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_MAX_VERSION
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.max-version
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_TLS_CIPHERSUITES
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.ciphersuites
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_MODE
+          valueFrom:
+            configMapKeyRef:
+              key: agent.mode
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_CREDS
+          valueFrom:
+            configMapKeyRef:
+              key: agent.creds
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_METRICS_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.metrics.port
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_HEALTH_CHECK_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.healthz.port
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_PRINCIPAL_LOG_FORMAT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.log.format
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_ENABLE_WEBSOCKET
+          valueFrom:
+            configMapKeyRef:
+              key: agent.websocket.enable
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_ENABLE_COMPRESSION
+          valueFrom:
+            configMapKeyRef:
+              key: agent.compression.enable
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_KEEP_ALIVE_PING_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              key: agent.keep-alive.interval
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_PPROF_PORT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.pprof.port
+              name: argocd-agent-params
+              optional: true
+        - name: REDIS_ADDR
+          valueFrom:
+            configMapKeyRef:
+              key: agent.redis.address
+              name: argocd-agent-params
+              optional: true
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: auth
+              name: argocd-redis
+        - name: ARGOCD_AGENT_ENABLE_RESOURCE_PROXY
+          valueFrom:
+            configMapKeyRef:
+              key: agent.resource-proxy.enable
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_DESTINATION_BASED_MAPPING
+          valueFrom:
+            configMapKeyRef:
+              key: agent.destination-based-mapping
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_CREATE_NAMESPACE
+          valueFrom:
+            configMapKeyRef:
+              key: agent.create-namespace
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_ALLOWED_NAMESPACES
+          valueFrom:
+            configMapKeyRef:
+              key: agent.allowed-namespaces
+              name: argocd-agent-params
+              optional: true
+        - name: ARGOCD_AGENT_INSECURE_PLAINTEXT
+          valueFrom:
+            configMapKeyRef:
+              key: agent.tls.insecure-plaintext
+              name: argocd-agent-params
+              optional: true
+        image: quay.io/argoprojlabs/argocd-agent:v0.7.0
+        imagePullPolicy: Always
+        name: argocd-agent-agent
+        ports:
+        - containerPort: 8000
+          name: metrics
+        - containerPort: 8002
+          name: healthz
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /app/config/creds
+          name: userpass-passwd
+      serviceAccountName: argocd-agent-agent
+      volumes:
+      - name: userpass-passwd
+        secret:
+          items:
+          - key: credentials
+            path: userpass.creds
+          optional: true
+          secretName: argocd-agent-agent-userpass

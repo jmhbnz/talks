@@ -1,0 +1,18 @@
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-gitops-operator
+  namespace: openshift-gitops-operator
+spec:
+  config:
+    env:
+      # Ensure the "argocd" namespace we use in this walkthrough
+      # for the principal is cluster scoped. This is required.
+      - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
+        value: argocd, openshift-gitops
+  channel: gitops-1.19
+  installPlanApproval: Automatic
+  name: openshift-gitops-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
