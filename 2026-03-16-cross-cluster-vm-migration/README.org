@@ -9,14 +9,19 @@ This guide will capture the flow I used to set up an environment that demonstrat
 
 ** Kubernetes tools
 
-This guide assumes you have the ~oc~ OpenShift Client already installed locally.
+This guide assumes you have the ~oc~ OpenShift Client already installed locally. If you don't have this already it is available via brew:
+
+#+NAME: Install openshift client
+#+begin_src bash
+brew install openshift-client
+#+end_src
 
 
 ** Base infrastructure
 
 This guide assumes you already have an OpenShift cluster and Red Hat Advanced Cluster Management in place. For my purposes I used the standard [[https://catalog.demo.redhat.com/services/user-jablair-redhat-com/published.ocp4-acm-demo.prod-lbjhr][RHACM demo base environment]].
 
-Before we begin, let's ensure we are logged into the base cluster with ~oc~:
+Before we begin, let's ensure we are logged into the hub cluster with ~oc~:
 
 #+NAME: Login to openshift hub cluster
 #+begin_src bash
@@ -30,9 +35,10 @@ WARNING: Using insecure TLS client config. Setting this option is not supported!
 
 Login successful.
 
-You have access to 92 projects, the list has been suppressed. You can list all projects with 'oc projects'
+You have access to 90 projects, the list has been suppressed. You can list all projects with 'oc projects'
 
 Using project "default".
+Welcome! See 'oc help' to get started.
 #+end_example
 
 
@@ -45,55 +51,61 @@ oc config rename-context $(oc config current-context) hub
 
 #+RESULTS: Set hub context name
 #+begin_example
-Context "default/api-cluster-2f9mj-dynamic-redhatworkshops-io:6443/admin" renamed to "hub".
+Context "default/api-cluster-m4nxh-dynamic-redhatworkshops-io:6443/admin" renamed to "hub".
 #+end_example
 
 
 * Configuring the hub cluster
 
+** Adding managed clusters
+
+For our demonstration we are going to connect two workload clusters to our acm hub. The workload clusters will run our virtual machines and we'll migrate machines between the two workload clusters.
+
+
+* Configure edge one cluster
+
+** Create kube context
+
+We'll refer to our edge one cluster with a specific kube context below, so let's login to it now and create that.
+
+#+NAME: Login to openshift edge one cluster
+#+begin_src bash
+source .env
+oc login "${EDGE1_API_URL}" --username "${EDGE1_USERNAME}" --password "${EDGE1_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+#+RESULTS: Login to openshift edge one cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 79 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
+#+NAME: Set edge one context name
+#+begin_src bash
+oc config rename-context $(oc config current-context) edge1
+#+end_src
+
+#+RESULTS: Set edge one context name
+#+begin_example
+Context "default/api-cluster-xf2wm-dynamic-redhatworkshops-io:6443/admin" renamed to "edge1".
+#+end_example
+
 
 ** Install virt operator
 
-Our hub cluster is not currently running OpenShift Virtualization, we need to enable that by installing the operator, we can do that by creating a ~Subscription~
+Our edge one cluster is not currently running OpenShift Virtualization, we need to enable that by installing the operator, we can do that by creating a ~Subscription~
 
-#+NAME: Create virt subscription
+#+NAME: Create edge one virt subscription
 #+begin_src bash
-cat << EOF | oc --context hub apply --filename -
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: openshift-cnv
-spec:
-  finalizers:
-  - kubernetes
-
----
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: kubevirt-hyperconverged
-  namespace: openshift-cnv
-spec:
-  channel: stable
-  installPlanApproval: Automatic
-  name: kubevirt-hyperconverged
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
-
----
-apiVersion: operators.coreos.com/v1
-kind: OperatorGroup
-metadata:
-  name: openshift-cnv
-  namespace: openshift-cnv
-spec:
-  targetNamespaces:
-  - openshift-cnv
-  upgradeStrategy: Default
-EOF
+oc --context edge1 apply --filename manifests/virt-operator.yaml
 #+end_src
 
-#+RESULTS: Create virt subscription
+#+RESULTS: Create edge one virt subscription
 #+begin_example
 namespace/openshift-cnv created
 subscription.operators.coreos.com/kubevirt-hyperconverged created
@@ -105,282 +117,189 @@ operatorgroup.operators.coreos.com/openshift-cnv created
 
 Once the operator is installed we can create the mandatory ~hyperconverged~ custom resource definition to enable virtualization.  Note we are specifically enabling the new ~decentralizedLiveMigration~ feature gate which will enable us to use cross cluster live migration.
 
-#+NAMEL: Create hyperconverged resource
+#+NAME: Create edge one hyperconverged resource
 #+begin_src bash
-cat << EOF | oc --context hub apply --filename -
-apiVersion: hco.kubevirt.io/v1beta1
-kind: HyperConverged
-metadata:
-  annotations:
-    deployOVS: "false"
-  finalizers:
-  - kubevirt.io/hyperconverged
-  labels:
-    app: kubevirt-hyperconverged
-  name: kubevirt-hyperconverged
-  namespace: openshift-cnv
-spec:
-  applicationAwareConfig:
-    allowApplicationAwareClusterResourceQuota: false
-    vmiCalcConfigName: DedicatedVirtualResources
-  certConfig:
-    ca:
-      duration: 48h0m0s
-      renewBefore: 24h0m0s
-    server:
-      duration: 24h0m0s
-      renewBefore: 12h0m0s
-  deployVmConsoleProxy: false
-  enableApplicationAwareQuota: false
-  enableCommonBootImageImport: true
-  evictionStrategy: None
-  featureGates:
-    alignCPUs: false
-    decentralizedLiveMigration: true
-    declarativeHotplugVolumes: false
-    deployKubeSecondaryDNS: false
-    disableMDevConfiguration: false
-    downwardMetrics: false
-    enableMultiArchBootImageImport: false
-    persistentReservation: false
-  higherWorkloadDensity:
-    memoryOvercommitPercentage: 100
-  infra: {}
-  liveMigrationConfig:
-    allowAutoConverge: false
-    allowPostCopy: false
-    completionTimeoutPerGiB: 150
-    parallelMigrationsPerCluster: 5
-    parallelOutboundMigrationsPerNode: 2
-    progressTimeout: 150
-  resourceRequirements:
-    vmiCPUAllocationRatio: 10
-  uninstallStrategy: BlockUninstallIfWorkloadsExist
-  virtualMachineOptions:
-    disableFreePageReporting: false
-    disableSerialConsoleLog: false
-  workloadUpdateStrategy:
-    batchEvictionInterval: 1m0s
-    batchEvictionSize: 10
-    workloadUpdateMethods:
-    - LiveMigrate
-  workloads: {}
-EOF
+oc --context edge1 apply --filename manifests/hyperconverged.yaml
 #+end_src
 
-#+RESULTS:
+#+RESULTS: Create edge one hyperconverged resource
 #+begin_example
 hyperconverged.hco.kubevirt.io/kubevirt-hyperconverged created
 #+end_example
 
 
-* Provision additional cluster
+** Install migration operator
 
-We're going to need more than one cluster if we want to migrate between clusters. This particular demonstration environment already has Red Hat Advanced Cluster Management in place so we'll leverage that to quickly provision an additional cluster running in AWS.
+Given we're wanting to demonstrate migrating virtual machines across clusters we also need to install the Migration Toolkit for Virtualization operator. As with the virt operator we can do this by creating a ~Subscription~.
 
-
-** Create infrastructure secret
-
-We need create an aws credential in order for RHACM to be able to create a cluster for us, this will need an aws key along with an ssh key, let's create that now, starting with the ssh key.
-
-#+NAME: Generate an ssh key
+#+NAME: Create edge one mtv subscription
 #+begin_src bash
-echo y | ssh-keygen -t rsa -b 2048 -N '' -q -f key
+oc --context edge1 apply --filename manifests/mtv-operator.yaml
 #+end_src
 
-
-#+NAME: Create infrastructure secret
-#+begin_src bash
-source .env
-SSH_PUBLIC_KEY=$(cat key.pub)
-SSH_PRIVATE_KEY=$(awk -v ORS='\\n' '1' key)
-
-cat << EOF | envsubst | oc --context hub apply --filename -
-apiVersion: v1
-kind: Secret
-type: Opaque
-metadata:
-  name: aws
-  namespace: open-cluster-management
-  labels:
-    cluster.open-cluster-management.io/type: aws
-    cluster.open-cluster-management.io/credentials: ""
-stringData:
-  aws_access_key_id: ${AWS_ACCESS_KEY}
-  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-  baseDomain: ${AWS_DNS_DOMAIN}
-  pullSecret: >+
-    ${PULL_SECRET}
-  ssh-privatekey: |
-    ${SSH_PRIVATE_KEY}
-  ssh-publickey: >+
-    ${SSH_PUBLIC_KEY}
-  httpProxy: ""
-  httpsProxy: ""
-  noProxy: ""
-  additionalTrustBundle: ""
-
-EOF
-#+end_src
-
-#+RESULTS: Create infrastructure secret
+#+RESULTS: Create edge one mtv subscription
 #+begin_example
-secret/aws created
+namespace/openshift-mtv created
+subscription.operators.coreos.com/mtv-operator created
+operatorgroup.operators.coreos.com/openshift-mtv created
 #+end_example
 
 
-** Create cluster deployment resource
+** Create forklift controller resource
 
-Once our infrastructure credential is created we can create a ~clusterdeployment~ and associated resources which advanced cluster management will watch for and execute to provision the new cluster.
+Once the mtv operator is installed we can create the required ~forkliftcontroller~ resource. Note we are specifically enabling the new ~feature_ocp_live_migration~ feature flag that will enable us to use cross cluster live migration.
 
-#+NAME: Create clusterdeployment resource
+#+NAME: Create edge one forkliftcontroller resource
 #+begin_src bash
-source .env
-SSH_PUBLIC_KEY=$(cat key.pub)
-SSH_PRIVATE_KEY=$(awk -v ORS='\\n' '1' key)
-
-cat << EOF | envsubst | oc --context hub apply --filename -
-apiVersion: hive.openshift.io/v1
-kind: ClusterDeployment
-metadata:
-  name: edge-cluster
-  namespace: edge-cluster
-  labels:
-    cloud: AWS
-    region: ${AWS_REGION}
-    vendor: OpenShift
-    cluster.open-cluster-management.io/clusterset: 'default'
-spec:
-  baseDomain: ${AWS_DNS_DOMAIN}
-  clusterName: edge-cluster
-  controlPlaneConfig:
-    servingCertificates: {}
-  installAttemptsLimit: 1
-  installed: false
-  platform:
-    aws:
-      credentialsSecretRef:
-        name: edge-cluster-aws-creds
-      region: ${AWS_REGION}
-  provisioning:
-    installConfigSecretRef:
-      name: edge-cluster-install-config
-    sshPrivateKeySecretRef:
-      name: edge-cluster-ssh-private-key
-    imageSetRef:
-       #quay.io/openshift-release-dev/ocp-release:4.21.5-multi
-      name: img4.21.5-multi-appsub
-  pullSecretRef:
-    name: edge-cluster-pull-secret
-
----
-apiVersion: cluster.open-cluster-management.io/v1
-kind: ManagedCluster
-metadata:
-  labels:
-    cloud: Amazon
-    region: ${AWS_REGION}
-    name: edge-cluster
-    vendor: OpenShift
-    cluster.open-cluster-management.io/clusterset: 'default'
-  name: edge-cluster
-spec:
-  hubAcceptsClient: true
-
----
-apiVersion: hive.openshift.io/v1
-kind: MachinePool
-metadata:
-  name: edge-cluster-worker
-  namespace: edge-cluster
-spec:
-  clusterDeploymentRef:
-    name: edge-cluster
-  name: worker
-  platform:
-    aws:
-      rootVolume:
-        iops: 2000
-        size: 100
-        type: io1
-      type: m5.xlarge
-  replicas: 0
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: edge-cluster-pull-secret
-  namespace: edge-cluster
-stringData:
-  .dockerconfigjson: |-
-    ${PULL_SECRET}
-type: kubernetes.io/dockerconfigjson
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: edge-cluster-install-config
-  namespace: edge-cluster
-type: Opaque
-data:
-  install-config.yaml: YXBpVmVyc2lvbjogdjEKbWV0YWRhdGE6CiAgbmFtZTogJ2VkZ2UtY2x1c3RlcicKYmFzZURvbWFpbjogc2FuZGJveDI2Nzcub3BlbnRsYy5jb20KY29udHJvbFBsYW5lOgogIGh5cGVydGhyZWFkaW5nOiBFbmFibGVkCiAgbmFtZTogbWFzdGVyCiAgcmVwbGljYXM6IDMKICBwbGF0Zm9ybToKICAgIGF3czoKICAgICAgcm9vdFZvbHVtZToKICAgICAgICBpb3BzOiA0MDAwCiAgICAgICAgc2l6ZTogMTAwCiAgICAgICAgdHlwZTogaW8xCiAgICAgIHR5cGU6IG01LnhsYXJnZQpjb21wdXRlOgotIGh5cGVydGhyZWFkaW5nOiBFbmFibGVkCiAgbmFtZTogJ3dvcmtlcicKICByZXBsaWNhczogMAogIHBsYXRmb3JtOgogICAgYXdzOgogICAgICByb290Vm9sdW1lOgogICAgICAgIGlvcHM6IDIwMDAKICAgICAgICBzaXplOiAxMDAKICAgICAgICB0eXBlOiBpbzEKICAgICAgdHlwZTogbTUueGxhcmdlCm5ldHdvcmtpbmc6CiAgbmV0d29ya1R5cGU6IE9WTkt1YmVybmV0ZXMKICBjbHVzdGVyTmV0d29yazoKICAtIGNpZHI6IDEwLjEyOC4wLjAvMTQKICAgIGhvc3RQcmVmaXg6IDIzCiAgbWFjaGluZU5ldHdvcms6CiAgLSBjaWRyOiAxMC4wLjAuMC8xNgogIHNlcnZpY2VOZXR3b3JrOgogIC0gMTcyLjMwLjAuMC8xNgpwbGF0Zm9ybToKICBhd3M6CiAgICByZWdpb246IHVzLWVhc3QtMQpwdWxsU2VjcmV0OiAiIiAjIHNraXAsIGhpdmUgd2lsbCBpbmplY3QgYmFzZWQgb24gaXQncyBzZWNyZXRzCnNzaEtleTogfC0KICAgIHNzaC1yc2EgQUFBQUIzTnphQzF5YzJFQUFBQURBUUFCQUFBQkFRQzBQSStpVnRFS2pCQ2V4RmJyU25rVnhCcHlobzYveXVldEFuNzZ3eENVeXh0NXNpemhZOXZkZHo2OWtmSmxDOUFhL2lzTkZ4YXdpeVcreE52cyt1eGU2UzVSbkhtRFBTTk1kMGR3QlpwSHlBckQ2VWdYV2JmZHBjaVFGN2Q0d2FrZGxMSThZakhKdWt1UTNwb0VVN28wSlRGYXB4RTNUbHBtV0h2dE5Vc1RxMCtDQkY5TVlUQ1dsVHhlWkkzN2o5MnBvNm11REtrbTM0WTNEUEZTN3p4ZnRvY0NkdzVOYXlWMWh1MkRHclVLZUhUNll1QkphTXEyU0IxYlhJUHpGcHpkVE9FcWdHbnNBelR1dHRET0xmYi8yaEN3QVZhMGlMMTlRcmNTYUZVKy8wK1FZcUd0cGZLbk5WWXhncllncEZKaUFDdGtZNGJGNS9ubHhJMFJybUxIIGphbWVzQGphbWVzLXVsdHJhYm9vawo=
-
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: edge-cluster-ssh-private-key
-  namespace: edge-cluster
-stringData:
-  ssh-privatekey: |-
-    ${SSH_PRIVATE_KEY}
-type: Opaque
-
----
-apiVersion: v1
-kind: Secret
-type: Opaque
-metadata:
-  name: edge-cluster-aws-creds
-  namespace: edge-cluster
-stringData:
-  aws_access_key_id: ${AWS_ACCESS_KEY}
-  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-
----
-apiVersion: agent.open-cluster-management.io/v1
-kind: KlusterletAddonConfig
-metadata:
-  name: edge-cluster
-  namespace: edge-cluster
-spec:
-  clusterName: edge-cluste
-  clusterNamespace: edge-cluster
-  clusterLabels:
-    cloud: Amazon
-    vendor: OpenShift
-  applicationManager:
-    enabled: true
-  policyController:
-    enabled: true
-  searchCollector:
-    enabled: true
-  certPolicyController:
-    enabled: true
-
-EOF
+oc --context edge1 apply --filename manifests/forklift-controller.yaml
 #+end_src
 
-#+RESULTS: Create clusterdeployment resource
+#+RESULTS: Create edge one forkliftcontroller resource
 #+begin_example
-clusterdeployment.hive.openshift.io/edge-cluster created
-managedcluster.cluster.open-cluster-management.io/edge-cluster created
-machinepool.hive.openshift.io/edge-cluster-worker created
-secret/edge-cluster-pull-secret created
-secret/edge-cluster-install-config created
-secret/edge-cluster-ssh-private-key created
-secret/edge-cluster-aws-creds created
-klusterletaddonconfig.agent.open-cluster-management.io/edge-cluster created
+forkliftcontroller.forklift.konveyor.io/forklift-controller created
+#+end_example
+
+
+* Configure edge two cluster
+
+** Create kube context
+
+We'll refer to our edge two cluster with a specific kube context below, so let's login to it now and create that.
+
+#+NAME: Login to openshift edge two cluster
+#+begin_src bash
+source .env
+oc login "${EDGE2_API_URL}" --username "${EDGE2_USERNAME}" --password "${EDGE2_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+#+RESULTS: Login to openshift edge two cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 79 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
+#+NAME: Set edge two context name
+#+begin_src bash
+oc config rename-context $(oc config current-context) edge2
+#+end_src
+
+#+RESULTS: Set edge two context name
+#+begin_example
+Context "default/api-cluster-dxvdf-dynamic-redhatworkshops-io:6443/admin" renamed to "edge2".
+#+end_example
+
+
+** Install virt operator
+
+Our edge two cluster is not currently running OpenShift Virtualization, we need to enable that by installing the operator, we can do that by creating a ~Subscription~
+
+#+NAME: Create edge two virt subscription
+#+begin_src bash
+oc --context edge2 apply --filename manifests/virt-operator.yaml
+#+end_src
+
+#+RESULTS: Create edge two virt subscription
+#+begin_example
+namespace/openshift-cnv created
+subscription.operators.coreos.com/kubevirt-hyperconverged created
+operatorgroup.operators.coreos.com/openshift-cnv created
+#+end_example
+
+
+** Create hyperconverged resource
+
+Once the operator is installed we can create the mandatory ~hyperconverged~ custom resource definition to enable virtualization.  Note we are specifically enabling the new ~decentralizedLiveMigration~ feature gate which will enable us to use cross cluster live migration.
+
+#+NAME: Create edge two hyperconverged resource
+#+begin_src bash
+oc --context edge2 apply --filename manifests/hyperconverged.yaml
+#+end_src
+
+#+RESULTS: Create edge two hyperconverged resource
+#+begin_example
+hyperconverged.hco.kubevirt.io/kubevirt-hyperconverged created
+#+end_example
+
+
+** Install migration operator
+
+Given we're wanting to demonstrate migrating virtual machines across clusters we also need to install the Migration Toolkit for Virtualization operator. As with the virt operator we can do this by creating a ~Subscription~.
+
+#+NAME: Create edge two mtv subscription
+#+begin_src bash
+oc --context edge2 apply --filename manifests/mtv-operator.yaml
+#+end_src
+
+#+RESULTS: Create edge two mtv subscription
+#+begin_example
+namespace/openshift-mtv created
+subscription.operators.coreos.com/mtv-operator created
+operatorgroup.operators.coreos.com/openshift-mtv created
+#+end_example
+
+
+** Create forklift controller resource
+
+Once the mtv operator is installed we can create the required ~forkliftcontroller~ resource. Note we are specifically enabling the new ~feature_ocp_live_migration~ feature flag that will enable us to use cross cluster live migration.
+
+#+NAME: Create edge two forkliftcontroller resource
+#+begin_src bash
+oc --context edge2 apply --filename manifests/forklift-controller.yaml
+#+end_src
+
+#+RESULTS: Create edge two forkliftcontroller resource
+#+begin_example
+forkliftcontroller.forklift.konveyor.io/forklift-controller created
+#+end_example
+
+
+* Create vm migration demo
+
+With the base cluster infrastructure now in place we can create the virtual machine and migration providers to enable us to move it around.
+
+** Create edge one migration provider
+
+Once the mtv operator is running we can create the ~secret~ and ~provider~ that will tell the migration toolkit on our edge one cluster how to talk to openshift virtualization on our edge two cluster.
+
+#+begin_quote:
+Note: Given this is a short lived demonstration environment to keep life simple we will disable certificate validation and simply use our kube context token as the auth token for the provider. Obviously this is not the approach you should use in production!
+#+end_quote
+
+#+NAME: Create edge one cluster provider
+#+begin_src bash
+export HUB_TOKEN=$(oc --context edge2 whoami --show-token)
+envsubst < manifests/edge2-provider.yaml | oc --context edge1 apply --filename -
+#+end_src
+
+#+RESULTS: Create edge one cluster provider
+#+begin_example
+secret/edge-two-cluster created
+provider.forklift.konveyor.io/edge-two-cluster created
+#+end_example
+
+#+RESULTS: Create hub cluster provider
+#+begin_example
+secret/hub-cluster created
+provider.forklift.konveyor.io/hub-cluster created
+#+end_example
+
+
+* Create demo virtual machine
+
+We now need to create the virtual machine we'll use to demonstrate cross cluster migration. Given this migration will be cross aws region traffic we'll keep this as lightweight as possible.
+
+#+NAME: Create virtual machine
+#+begin_src bash
+oc --context hub apply --filename manifests/virtual-machine.yaml
+#+end_src
+
+#+RESULTS: Create virtual machine
+#+begin_example
+namespace/vm-test created
+virtualmachine.kubevirt.io/fedora-vm created
 #+end_example

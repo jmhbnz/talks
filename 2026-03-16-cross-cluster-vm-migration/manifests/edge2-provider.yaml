@@ -1,0 +1,24 @@
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: edge-two-cluster
+  namespace: openshift-mtv
+stringData:
+  insecureSkipVerify: "true"
+  token: "${HUB_TOKEN}"
+  url: "${HUB_API_URL}"
+type: Opaque
+
+---
+apiVersion: forklift.konveyor.io/v1beta1
+kind: Provider
+metadata:
+  name: edge-two-cluster
+  namespace: openshift-mtv
+spec:
+  secret:
+    name: edge-two-cluster
+    namespace: openshift-mtv
+  type: openshift
+  url: '${HUB_API_URL}'

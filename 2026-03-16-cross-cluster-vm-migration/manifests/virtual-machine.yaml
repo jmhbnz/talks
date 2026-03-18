@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vm-test
+
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: fedora-vm
+  namespace: vm-test
+  labels:
+    vm: fedora
+spec:
+  runStrategy: RerunOnFailure
+  template:
+    metadata:
+      labels:
+        vm: fedora
+    spec:
+      domain:
+        devices:
+          disks:
+            - name: disk0
+              disk:
+                bus: virtio
+        resources:
+          requests:
+            memory: 2Gi
+            cpu: 1
+      terminationGracePeriodSeconds: 0
+      volumes:
+        - name: disk0
+          containerDisk:
+            image: quay.io/fedora/fedora:latest
