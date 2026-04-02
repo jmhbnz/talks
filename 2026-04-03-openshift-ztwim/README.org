@@ -1,0 +1,12 @@
+#+TITLE: Zero Trust Workload Identity Manager Demo
+#+DATE: <2026-04-03 Fri>
+
+
+A short demo setup for the Zero Trust Workload Identity Manager in OpenShift.
+
+
+* Pre-requisites
+
+- [ ] An OpenShift Cluster with cluster admin permissions, these instructions have been tested with OpenShift ~4.21~.
+
+- [ ] The ~oc~ command line tool available in your path.
