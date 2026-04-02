@@ -9,4 +9,27 @@ A short demo setup for the Zero Trust Workload Identity Manager in OpenShift.
 
 - [ ] An OpenShift Cluster with cluster admin permissions, these instructions have been tested with OpenShift ~4.21~.
 
-- [ ] The ~oc~ command line tool available in your path.
+- [ ] The ~oc~ command line tool available in your path. Before we begin, let's ensure we are logged into the hub cluster with ~oc~:
+
+#+NAME: Login to openshift cluster
+#+begin_src bash
+source .env
+oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+
+* Install ztwim operator
+
+The Zero Trust Workload Identity Manager is an Openshift Day-2 Operator designed to automate the setup and management of SPIFFE/SPIRE components. We'll install that now by creating a ~Subscription~ resource.
+
+#+NAME: Install ztwim operator
+#+begin_src bash
+oc apply --filename manifests/operator.yaml
+#+end_src
+
+#+RESULTS: Install ztwim operator
+#+begin_example
+namespace/zero-trust-workload-identity-manager created
+subscription.operators.coreos.com/openshift-zero-trust-workload-identity-manager created
+operatorgroup.operators.coreos.com/zero-trust-workload-identity-manager created
+#+end_example
