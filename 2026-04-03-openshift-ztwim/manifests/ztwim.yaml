@@ -1,0 +1,9 @@
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: ZeroTrustWorkloadIdentityManager
+metadata:
+  name: cluster
+spec:
+  bundleConfigMap: spire-bundle
+  clusterName: prod-cluster
+  trustDomain: example.com

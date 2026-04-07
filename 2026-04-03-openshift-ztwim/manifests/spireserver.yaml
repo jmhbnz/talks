@@ -1,0 +1,29 @@
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpireServer
+metadata:
+  name: cluster
+spec:
+  logLevel: "info"
+  logFormat: "text"
+  jwtIssuer: "https://oidc-discovery.apps.cluster.example.com"
+  caValidity: "24h"
+  defaultX509Validity: "1h"
+  defaultJWTValidity: "5m"
+  jwtKeyType: "rsa-2048"
+  caSubject:
+    country: "US"
+    organization: "Example Corporation"
+    commonName: "SPIRE Server CA"
+  persistence:
+    size: "5Gi"
+    accessMode: "ReadWriteOnce"
+    storageClass: "ocs-external-storagecluster-ceph-rbd"
+  datastore:
+    databaseType: "sqlite3"
+    connectionString: "/run/spire/data/datastore.sqlite3"
+    tlsSecretName: ""
+    maxOpenConns: 100
+    maxIdleConns: 10
+    connMaxLifetime: 0
+    disableMigration: "false"

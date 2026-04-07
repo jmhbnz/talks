@@ -17,6 +17,17 @@ source .env
 oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
 #+end_src
 
+#+RESULTS: Login to openshift cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 79 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
 
 * Install ztwim operator
 
@@ -27,9 +38,34 @@ The Zero Trust Workload Identity Manager is an Openshift Day-2 Operator designed
 oc apply --filename manifests/operator.yaml
 #+end_src
 
-#+RESULTS: Install ztwim operator
+
+* Create ztwim crd
+
+Once the operator is installed we can create an instance of the ~ZeroTrustWorkloadIdentityManager~ meta resource followed by each of the required sub components.
+
+As outlined in the [[https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/security_and_compliance/zero-trust-workload-identity-manager#zero-trust-manager-configuration][documentation]] we must deploy the operands in the following sequence to ensure successful installation:
+  - ZeroTrustWorkloadIdentityManager CR
+  - SPIRE Server
+  - SPIRE Agent
+  - SPIFFE CSI driver
+  - SPIRE OIDC discovery provider
+
+#+NAME: Create ztwim resouce
+#+begin_src bash
+oc apply --filename manifests/ztwim.yaml
+#+end_src
+
+#+RESULTS: Create ztwim resouce
 #+begin_example
-namespace/zero-trust-workload-identity-manager created
-subscription.operators.coreos.com/openshift-zero-trust-workload-identity-manager created
-operatorgroup.operators.coreos.com/zero-trust-workload-identity-manager created
+zerotrustworkloadidentitymanager.operator.openshift.io/cluster created
+#+end_example
+
+#+NAME: Create spire server resource
+#+begin_src bash
+oc apply --filename manifests/spireserver.yaml
+#+end_src
+
+#+RESULTS: Create spire server resource
+#+begin_example
+spireserver.operator.openshift.io/cluster created
 #+end_example
