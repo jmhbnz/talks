@@ -23,7 +23,7 @@ WARNING: Using insecure TLS client config. Setting this option is not supported!
 
 Login successful.
 
-You have access to 79 projects, the list has been suppressed. You can list all projects with 'oc projects'
+You have access to 82 projects, the list has been suppressed. You can list all projects with 'oc projects'
 
 Using project "default".
 #+end_example
@@ -97,3 +97,229 @@ All components are ready
 #+end_example
 
 
+We can also review the generated x509 authority within the newly created spire server.
+
+#+NAME: Review server x509 authority
+#+begin_src bash
+oc --namespace zero-trust-workload-identity-manager exec spire-server-0 -- ./spire-server localauthority x509 show
+#+end_src
+
+#+RESULTS: Review server x509 authority
+#+begin_example
+Active X.509 authority:
+  Authority ID: a3f4af795df86f84313aa6d12122b427bf5fd1a0
+  Expires at: 2026-04-10 08:05:34 +0000 UTC
+  Upstream authority ID: No upstream authority
+
+Prepared X.509 authority:
+  Authority ID: 57f14025b604e2f77463c4264244822ee61494f6
+  Expires at: 2026-04-10 20:05:34 +0000 UTC
+  Upstream authority ID: No upstream authority
+
+Old X.509 authority:
+  No old X.509 authority found
+#+end_example
+
+
+Given the agent ~DaemonSet~ has also been deployed we can also confirm that the attestation was successful within spire server.
+
+#+NAME: Review server agent list
+#+begin_src bash
+oc --namespace zero-trust-workload-identity-manager exec spire-server-0 -- ./spire-server agent list
+#+end_src
+
+#+RESULTS: Review server agent list
+#+begin_example
+Found 1 attested agent:
+
+SPIFFE ID         : spiffe://example.com/spire/agent/k8s_psat/prod-cluster/6634c142-5d92-4604-98d2-d6c09c949ee3
+Attestation type  : k8s_psat
+Expiration time   : 2026-04-09 21:40:47 +0000 UTC
+Serial number     : 12978253474438894000133606678123615941
+Can re-attest     : true
+
+#+end_example
+
+
+* Deploy postgres workload
+
+Now that we have Zero Trust Workload Identity Manager deployed, let's create an example postgres database workload and configure it to use mTLS only authentication which will be via Spiffe x509 identities.
+
+#+NAME: Deploy postgres
+#+begin_src bash
+oc apply --filename manifests/postgres.yaml
+#+end_src
+
+#+RESULTS: Deploy postgres
+#+begin_example
+namespace/postgresql-spiffe created
+serviceaccount/postgresql-spiffe created
+clusterspiffeid.spire.spiffe.io/postgresql-spiffe created
+configmap/postgres-config created
+configmap/postgresql-init-db created
+configmap/spiffe-helper created
+service/postgresql-spiffe created
+deployment.apps/postgresql-spiffe created
+#+end_example
+
+
+* Deploy postgres client
+
+Once the database is running let's deploy a sample workload to use it.
+
+#+NAME: Deploy postgres client
+#+begin_src bash
+oc apply --filename manifests/postgres-client.yaml
+#+end_src
+
+#+RESULTS: Deploy postgres client
+#+begin_example
+namespace/postgresql-spiffe-client unchanged
+serviceaccount/postgresql-spiffe-client unchanged
+configmap/spiffe-helper unchanged
+clusterspiffeid.spire.spiffe.io/postgresql-spiffe-client unchanged
+deployment.apps/postgresql-spiffe-client unchanged
+#+end_example
+
+
+* Review certificates
+
+With both database and client running let's review the certificates the helper has requested for them:
+
+#+NAME: Review postgres x509 certificate
+#+begin_src bash
+oc rsh --namespace postgresql-spiffe --container postgresql-spiffe deployment/postgresql-spiffe cat /opt/postgresql-certs/svid.pem | openssl x509 -noout -text
+#+end_src
+
+#+RESULTS: Review postgres x509 certificate
+#+begin_example
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            69:ac:2e:60:c6:bf:48:8d:40:16:cb:00:21:c9:c8:2c
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=US, O=Example Corporation, CN=SPIRE Server CA, serialNumber=94934908817326902212952225782202066819
+        Validity
+            Not Before: Apr  9 20:55:59 2026 GMT
+            Not After : Apr  9 21:56:09 2026 GMT
+        Subject: C=US, O=SPIRE, CN=postgresql-spiffe.postgresql-spiffe.svc
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:d6:21:da:c2:a9:d0:ee:31:aa:c3:2e:59:e8:19:
+                    eb:da:d1:aa:7f:e6:89:b7:14:fb:66:19:40:a6:32:
+                    19:65:9c:1b:70:6b:30:d0:ca:1a:86:af:bb:e0:9c:
+                    70:b5:f0:e2:c9:55:27:fd:2d:31:04:2a:73:35:7b:
+                    3d:3a:5a:8f:99
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment, Key Agreement
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Subject Key Identifier:
+                69:BE:7E:0F:03:65:57:93:3D:CD:92:FE:B5:4F:41:78:25:2C:97:9C
+            X509v3 Authority Key Identifier:
+                A3:F4:AF:79:5D:F8:6F:84:31:3A:A6:D1:21:22:B4:27:BF:5F:D1:A0
+            X509v3 Subject Alternative Name:
+                DNS:postgresql-spiffe.postgresql-spiffe.svc, URI:spiffe://example.com/ns/postgresql-spiffe/sa/postgresql-spiffe
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        3e:eb:b9:b7:0f:3b:d6:35:af:29:10:32:4f:36:e7:f0:c8:4c:
+        7b:4e:63:14:e0:2b:f6:73:79:b8:7e:65:82:56:4a:78:5b:06:
+        b5:f0:51:0b:2a:1c:be:c3:f9:ed:52:3c:cb:b6:3d:7f:8c:ff:
+        7b:2e:47:6d:b5:28:71:ba:6f:de:0b:38:89:8e:66:05:b0:85:
+        ce:a0:41:36:58:8d:df:61:96:49:81:e9:c0:ba:e5:5e:ea:f1:
+        fb:91:bf:c4:77:8a:65:7d:02:48:c1:6b:c6:ce:58:0e:14:31:
+        d3:02:0c:cb:ee:c8:12:59:4b:30:98:36:2d:5e:d0:c5:89:f9:
+        e9:ac:4d:26:ba:c4:5a:c3:8e:16:e5:1d:06:cf:51:9d:0d:ab:
+        aa:31:4d:cb:e5:5d:0a:86:0c:7b:f8:60:c0:a7:ac:ee:97:9a:
+        f1:2b:00:84:ec:65:33:0b:c1:6b:14:df:a0:10:d3:9b:31:bd:
+        32:b3:6b:86:fd:de:a7:8e:5b:fc:29:73:61:04:a4:c4:3b:1b:
+        09:34:d9:0c:59:51:c0:24:73:59:f9:ee:c6:40:ad:6a:a0:cf:
+        92:47:4b:e5:0b:bb:9e:19:35:81:d2:e1:2b:96:e4:48:02:04:
+        57:8b:bc:41:9f:6f:37:79:42:8d:2e:c4:9f:7f:ab:57:d4:0c:
+        5a:6a:74:6a
+#+end_example
+
+
+#+NAME: Review client x509 cert
+#+begin_src bash
+oc rsh --namespace postgresql-spiffe-client --container postgresql-spiffe-client deployment/postgresql-spiffe-client cat /opt/postgresql-certs/svid.pem | openssl x509 -noout -text
+#+end_src
+
+#+RESULTS: Review client x509 cert
+#+begin_example
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            71:da:4c:85:86:9f:a1:36:6b:c9:7a:4c:86:9a:df:87
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=US, O=Example Corporation, CN=SPIRE Server CA, serialNumber=94934908817326902212952225782202066819
+        Validity
+            Not Before: Apr  9 20:51:56 2026 GMT
+            Not After : Apr  9 21:52:06 2026 GMT
+        Subject: C=US, O=SPIRE, CN=postgresql_spiffe
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:0f:25:6f:7a:05:a7:b8:4a:ff:13:d0:7c:68:ab:
+                    60:8f:2d:43:ac:c2:78:12:f6:16:84:72:a6:9b:66:
+                    a7:4f:1e:4c:8e:ed:0b:1b:4b:58:cf:b9:4f:f1:96:
+                    44:06:e2:85:81:f8:e6:fc:df:63:f9:51:b4:0f:b1:
+                    0c:6c:30:1d:bd
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Key Usage: critical
+                Digital Signature, Key Encipherment, Key Agreement
+            X509v3 Extended Key Usage:
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Basic Constraints: critical
+                CA:FALSE
+            X509v3 Subject Key Identifier:
+                42:43:58:0A:EE:AF:F9:AD:C5:92:16:BC:2B:A2:AB:14:EB:C6:3C:8A
+            X509v3 Authority Key Identifier:
+                A3:F4:AF:79:5D:F8:6F:84:31:3A:A6:D1:21:22:B4:27:BF:5F:D1:A0
+            X509v3 Subject Alternative Name:
+                DNS:postgresql_spiffe, URI:spiffe://example.com/ns/postgresql-spiffe-client/sa/postgresql-spiffe-client
+    Signature Algorithm: sha256WithRSAEncryption
+    Signature Value:
+        48:47:8d:c1:62:da:d3:f0:64:f3:53:35:4b:6a:e1:b4:3f:bb:
+        39:a0:c8:3a:10:7b:a5:3a:38:1e:70:e6:54:9b:fe:03:90:1b:
+        3d:fe:1d:68:bd:55:2c:4e:2b:1c:f5:a8:87:43:51:2a:14:11:
+        82:f9:d4:a7:89:ba:3e:99:5a:25:56:a9:7f:2e:da:6a:96:41:
+        00:e0:f5:49:c8:96:e9:39:96:a7:07:58:4b:4f:01:61:d3:72:
+        e7:6b:9f:46:e0:96:24:96:b0:ee:1c:75:28:02:d1:e4:30:ff:
+        27:2c:55:3d:71:d8:39:38:68:f2:84:b3:c8:67:8a:66:d9:72:
+        35:b9:63:b4:5b:8a:91:11:cf:0f:17:0b:6c:72:da:76:94:48:
+        46:36:86:ee:f3:14:3f:2f:f7:09:09:8c:98:6d:eb:ef:b6:4f:
+        0b:8e:48:19:bf:28:44:29:fc:e4:8a:35:f8:78:67:5a:27:ce:
+        a7:fc:31:25:b6:52:1d:2e:6e:d4:66:f5:3b:07:7e:d3:29:cf:
+        81:78:66:5b:b5:8c:5f:b1:d8:ff:53:75:b0:c7:47:99:c3:b1:
+        34:2d:8a:55:5e:ec:97:c5:43:31:53:00:38:d7:52:3f:a6:38:
+        12:58:68:d9:66:26:98:41:d1:a9:b7:62:67:da:3b:85:3b:03:
+        56:28:c2:51
+#+end_example
+
+
+* Verify connectivity
+
+Let's put this new mTLS to the test!
+
+#+NAME: Test connection
+#+begin_src bash
+oc rsh --namespace postgresql-spiffe-client --container postgresql-spiffe-client deployment/postgresql-spiffe-client \
+psql "host=postgresql-spiffe.postgresql-spiffe.svc port=5432 user=postgresql_spiffe dbname=testdb sslmode=verify-full sslcert=/opt/postgresql-certs/svid.pem sslkey=/opt/postgresql-certs/svid.key sslrootcert=/opt/postgresql-certs/svid_bundle.pem"
+#+end_src
+
+#+RESULTS: Test connection
+#+begin_example
+#+end_example
