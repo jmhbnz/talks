@@ -39,7 +39,21 @@ oc apply --filename manifests/operator.yaml
 #+end_src
 
 
-* Create ztwim crd
+Once created we can monitor the install as follows:
+
+#+NAME: Check operator install progress
+#+begin_src bash
+oc get csv --namespace zero-trust-workload-identity-manager
+#+end_src
+
+#+RESULTS: Check operator install progress
+#+begin_example
+NAME                                          DISPLAY                                VERSION   REPLACES   PHASE
+zero-trust-workload-identity-manager.v1.0.0   Zero Trust Workload Identity Manager   1.0.0                Succeeded
+#+end_example
+
+
+* Deploy ztwim components
 
 Once the operator is installed we can create an instance of the ~ZeroTrustWorkloadIdentityManager~ meta resource followed by each of the required sub components.
 
@@ -53,19 +67,33 @@ As outlined in the [[https://docs.redhat.com/en/documentation/openshift_containe
 #+NAME: Create ztwim resouce
 #+begin_src bash
 oc apply --filename manifests/ztwim.yaml
+oc apply --filename manifests/spireserver.yaml
+oc apply --filename manifests/spireagent.yaml
+oc apply --filename manifests/spirecsidriver.yaml
+oc apply --filename manifests/spireoidcdiscoveryprovider.yaml
 #+end_src
 
 #+RESULTS: Create ztwim resouce
 #+begin_example
 zerotrustworkloadidentitymanager.operator.openshift.io/cluster created
+spireserver.operator.openshift.io/cluster created
+spireagent.operator.openshift.io/cluster created
+spiffecsidriver.operator.openshift.io/cluster created
+spireoidcdiscoveryprovider.operator.openshift.io/cluster created
 #+end_example
 
-#+NAME: Create spire server resource
+
+Once deployed we can check all the compnents are healthy:
+
+#+NAME: Check spire components
 #+begin_src bash
-oc apply --filename manifests/spireserver.yaml
+# Check all components are ready
+oc get ZeroTrustWorkloadIdentityManager cluster --output jsonpath='{.status.conditions[?(@.type=="Ready")].message}'
 #+end_src
 
-#+RESULTS: Create spire server resource
+#+RESULTS: Check spire components
 #+begin_example
-spireserver.operator.openshift.io/cluster created
+All components are ready
 #+end_example
+
+

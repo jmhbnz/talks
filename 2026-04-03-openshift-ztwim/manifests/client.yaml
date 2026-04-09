@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: example-app
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: client-sa
+  namespace: example-app
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: example-app
+  labels:
+    app: client
+spec:
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      serviceAccountName: client-sa
+      containers:
+        - name: client
+          image: ghcr.io/spiffe/spire-agent:1.5.1
+          command: ["/opt/spire/bin/spire-agent"]
+          args: ["api", "watch", "-socketPath", "/run/spire/agent-sockets/spire-agent.sock"]
+          volumeMounts:
+            - name: spiffe-workload-api
+              readOnly: true
+              mountPath: /run/spire/agent-sockets
+      volumes:
+        - name: spiffe-workload-api
+          csi:
+            driver: csi.spiffe.io
+            readOnly: true

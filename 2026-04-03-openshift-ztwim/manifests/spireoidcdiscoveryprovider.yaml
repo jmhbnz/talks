@@ -1,0 +1,12 @@
+---
+apiVersion: operator.openshift.io/v1alpha1
+kind: SpireOIDCDiscoveryProvider
+metadata:
+  name: cluster
+spec:
+  logLevel: "info"
+  logFormat: "text"
+  csiDriverName: "csi.spiffe.io"
+  jwtIssuer: "https://oidc-discovery.apps.cluster.example.com"
+  replicaCount: 1
+  managedRoute: "true"
