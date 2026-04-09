@@ -247,6 +247,7 @@ Certificate:
         5a:6a:74:6a
 #+end_example
 
+Notice the CN field includes the hostname that will be used by clients connecting to the instance. This configuration is defined within the ~postgresql-spiffe~ ~ClusterSPIFFEID~.
 
 #+NAME: Review client x509 cert
 #+begin_src bash
@@ -308,6 +309,8 @@ Certificate:
         12:58:68:d9:66:26:98:41:d1:a9:b7:62:67:da:3b:85:3b:03:
         56:28:c2:51
 #+end_example
+
+Instead of the hostname, the PostgreSQL username postgresql_spiffe is specified as the CN as defied on the ~postgresql-spiffe-client~ ~ClusterSPIFFEID~.
 
 
 * Verify connectivity
