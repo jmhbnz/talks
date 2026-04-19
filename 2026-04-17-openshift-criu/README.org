@@ -1,0 +1,94 @@
+#+TITLE: Live Pod Migration
+#+DATE: <2026-04-17 Fri>
+
+
+A short demo of live migrating pods between nodes via CRIU Checkpoint & Restore in Userspace.
+
+
+* Manual terminal criu demo
+
+** Spawn an example workload
+
+For this initial manual demonstration we'll run criu commands locally in our terminal so that attendees get an understanding how how checkpoint and restore works conceptually.
+
+For a demo process we'll load the classic Star Wars Episode IV via telnet. All we need to do is run the command below then enter ~starwars~ at the ensuing prompt.
+
+#+NAME: Spawn example workload
+#+begin_src tmux
+telnet telehack.com
+#+end_src
+
+After a short wait we should now see Star Wars Episode IV in ascii form in our terminal!
+
+#+NAME: Movie screenshot
+#+begin_src text
+                                .                       .
+                  .                            .
+                                     /~\
+                                    |oo )      We're doomed!
+                                    _\=/_
+                    ___        #   /  _  \   #
+                   /() \        \\//|/.\|\\//
+                 _|_____|_       \/  \_/  \/
+                | | === | |         |\ /|
+                |_|  O  |_|         \_ _/
+                 ||  O  ||          | | |
+                 ||__*__||          | | |
+                |~ \___/ ~|         []|[]
+                /=\ /=\ /=\         | | |
+________________[_]_[_]_[_]________/_]_[_\_________________________
+#+end_src
+
+
+** Checkpoint process
+
+With our sample ~telnet~ process now running we need to checkpoint it to disk.
+
+#+NAME: Checkpoint running process
+#+begin_src bash
+sudo criu dump \
+    --tree "$(ps -e | grep telnet | awk '{print $1}')" \
+    --tcp-established \
+    --shell-job \
+    --images-dir telnet
+
+ls -lah telnet
+#+end_src
+
+Reviewing the results in the ~telnet~ directory we can see all of the process dump files, including open file descriptors, tcp streams, cgroups, memory pages and more.
+
+#+RESULTS: Checkpoint running process
+#+begin_example
+total 464K
+drwxr-xr-x. 1 james james  396 Apr 19 12:32 .
+drwxr-xr-x. 1 james james   32 Apr 19 10:47 ..
+-rw-r--r--. 1 root  root   450 Apr 19 12:32 cgroup.img
+-rw-r--r--. 1 root  root  2.1K Apr 19 12:32 core-74142.img
+-rw-r--r--. 1 root  root   111 Apr 19 12:32 fdinfo-2.img
+-rw-r--r--. 1 root  root  1.3K Apr 19 12:32 files.img
+-rw-r--r--. 1 root  root    18 Apr 19 12:32 fs-74142.img
+-rw-r--r--. 1 root  root    36 Apr 19 12:32 ids-74142.img
+-rw-r--r--. 1 root  root    86 Apr 19 12:32 inventory.img
+-rw-r--r--. 1 root  root  1.9K Apr 19 12:32 mm-74142.img
+-rw-r--r--. 1 root  root   446 Apr 19 12:32 pagemap-74142.img
+-rw-r--r--. 1 root  root  404K Apr 19 12:32 pages-1.img
+-rw-r--r--. 1 root  root    29 Apr 19 12:32 pstree.img
+-rw-r--r--. 1 root  root    12 Apr 19 12:32 seccomp.img
+-rw-r--r--. 1 root  root    47 Apr 19 12:32 stats-dump
+-rw-r--r--. 1 root  root    71 Apr 19 12:32 tcp-stream-43c9c.img
+-rw-r--r--. 1 root  root    34 Apr 19 12:32 timens-0.img
+-rw-r--r--. 1 root  root   183 Apr 19 12:32 tty-info.img
+#+end_example
+
+
+** Restore process
+
+Once the process has been dumped we can restore it with the following command. Let's run this now in that same terminal and we should see our movie resume!
+
+#+NAME: Restore process
+#+begin_src tmux
+sudo criu restore \
+    --tcp-established \
+    --shell-job \
+    --images-dir telnet
+#+end_src
