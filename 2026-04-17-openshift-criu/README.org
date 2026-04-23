@@ -5,6 +5,30 @@
 A short demo of live migrating pods between nodes via CRIU Checkpoint & Restore in Userspace.
 
 
+* Prerequisites
+
+- [ ] An OpenShift Cluster with cluster admin permissions, these instructions have been tested with OpenShift ~4.21~.
+
+- [ ] The ~oc~ command line tool available in your path. Before we begin, let's ensure we are logged into the cluster with ~oc~:
+
+#+NAME: Login to openshift cluster
+#+begin_src bash
+source .env
+oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+#+RESULTS: Login to openshift cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 79 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
+
 * Manual terminal criu demo
 
 ** Spawn an example workload
@@ -59,31 +83,34 @@ Reviewing the results in the ~telnet~ directory we can see all of the process du
 
 #+RESULTS: Checkpoint running process
 #+begin_example
-total 464K
-drwxr-xr-x. 1 james james  396 Apr 19 12:32 .
-drwxr-xr-x. 1 james james   32 Apr 19 10:47 ..
--rw-r--r--. 1 root  root   450 Apr 19 12:32 cgroup.img
--rw-r--r--. 1 root  root  2.1K Apr 19 12:32 core-74142.img
--rw-r--r--. 1 root  root   111 Apr 19 12:32 fdinfo-2.img
--rw-r--r--. 1 root  root  1.3K Apr 19 12:32 files.img
--rw-r--r--. 1 root  root    18 Apr 19 12:32 fs-74142.img
--rw-r--r--. 1 root  root    36 Apr 19 12:32 ids-74142.img
--rw-r--r--. 1 root  root    86 Apr 19 12:32 inventory.img
--rw-r--r--. 1 root  root  1.9K Apr 19 12:32 mm-74142.img
--rw-r--r--. 1 root  root   446 Apr 19 12:32 pagemap-74142.img
--rw-r--r--. 1 root  root  404K Apr 19 12:32 pages-1.img
--rw-r--r--. 1 root  root    29 Apr 19 12:32 pstree.img
--rw-r--r--. 1 root  root    12 Apr 19 12:32 seccomp.img
--rw-r--r--. 1 root  root    47 Apr 19 12:32 stats-dump
--rw-r--r--. 1 root  root    71 Apr 19 12:32 tcp-stream-43c9c.img
--rw-r--r--. 1 root  root    34 Apr 19 12:32 timens-0.img
--rw-r--r--. 1 root  root   183 Apr 19 12:32 tty-info.img
+total 480K
+drwxr-xr-x. 1 james james  500 Apr 23 09:18 .
+drwxr-xr-x. 1 james james   78 Apr 23 09:00 ..
+-rw-r--r--. 1 root  root   450 Apr 23 09:18 cgroup.img
+-rw-r--r--. 1 root  root  2.1K Apr 23 09:18 core-147471.img
+-rw-r--r--. 1 root  root   111 Apr 23 09:18 fdinfo-2.img
+-rw-r--r--. 1 root  root  1.3K Apr 23 09:18 files.img
+-rw-r--r--. 1 root  root    18 Apr 23 09:18 fs-147471.img
+-rw-r--r--. 1 root  root    36 Apr 23 09:18 ids-147471.img
+-rw-r--r--. 1 root  root    86 Apr 23 09:18 inventory.img
+-rw-r--r--. 1 root  root  1.9K Apr 23 09:18 mm-147471.img
+-rw-r--r--. 1 root  root   446 Apr 23 09:18 pagemap-147471.img
+-rw-r--r--. 1 root  root  408K Apr 23 09:18 pages-1.img
+-rw-r--r--. 1 root  root    30 Apr 23 09:18 pstree.img
+-rw-r--r--. 1 root  root    12 Apr 23 09:18 seccomp.img
+-rw-r--r--. 1 root  root    47 Apr 23 09:18 stats-dump
+-rw-r--r--. 1 root  root    25 Apr 23 09:07 stats-restore
+-rw-r--r--. 1 root  root    70 Apr 23 09:07 tcp-stream-30eba9.img
+-rw-r--r--. 1 root  root    70 Apr 23 09:18 tcp-stream-313a14.img
+-rw-r--r--. 1 root  root    34 Apr 23 09:07 timens-0.img
+-rw-r--r--. 1 root  root    32 Apr 23 09:18 timens-9.img
+-rw-r--r--. 1 root  root   185 Apr 23 09:18 tty-info.img
 #+end_example
 
 
 ** Restore process
 
-Once the process has been dumped we can restore it with the following command. Let's run this now in that same terminal and we should see our movie resume!
+Once the process has been dumped we can restore it with the following command. Let's run this now in that same terminal and we should see our movie resume from where we left off!
 
 #+NAME: Restore process
 #+begin_src tmux
@@ -92,3 +119,157 @@ sudo criu restore \
     --shell-job \
     --images-dir telnet
 #+end_src
+
+
+* Kubernetes pod checkpoint
+
+Now that we've demonstrated the concepts manually let's demonstrate how checkpoint and restore can work in kubernetes. To do so we'll be using the [[https://github.com/checkpoint-restore/checkpointctl][~checkpointctl~]] cli utility, we need to compile that from source:
+
+** Compile checkpointctl
+
+Now that we've demonstrated the concepts manually let's demonstrate how checkpoint and restore can work in kubernetes. To do so we'll be using the ~checkpointctl~ cli utility, we need to compile that from source:
+
+#+NAME: Compilation requirements
+#+begin_quote
+Note: This guide assumes your system will have a modern go version and the required dependencies (asciidoctor) to compile ~checkpointctl~. Follow the directions in the [[https://github.com/checkpoint-restore/checkpointctl][checkpointctl]] README.md.
+#+end_quote
+
+#+NAME: Install checkpointctl
+#+begin_src bash
+git clone --depth 1 https://github.com/checkpoint-restore/checkpointctl
+cd checkpointctl && make
+./checkpointctl --help
+#+end_src
+
+#+RESULTS: Install checkpointctl
+#+begin_example
+make: Nothing to be done for 'all'.
+checkpointctl is a tool to read and manipulate checkpoint archives as created by Podman, CRI-O and containerd
+
+Usage:
+  checkpointctl [command]
+
+Available Commands:
+  build       Create an OCI image from a container checkpoint archive
+  completion  Generate the autocompletion script for the specified shell
+  diff        Show changes between two container checkpoints
+  help        Help about any command
+  inspect     Display low-level information about a container checkpoint
+  list        List checkpoints stored in the default and additional directories
+  memparse    Analyze container checkpoint memory
+  plugin      Manage checkpointctl plugins
+  show        Show an overview of container checkpoints
+
+Flags:
+  -h, --help      help for checkpointctl
+  -v, --version   version for checkpointctl
+
+Use "checkpointctl [command] --help" for more information about a command.
+#+end_example
+
+
+** Deploy sample pod
+
+Let's now create the sample pod we'll use to demonstrate checkpoint and restore. It's a simple bash counter that will demonstrate resuming where the counter has left off.
+
+
+#+begin_src bash
+cat << 'EOF' | oc apply --filename -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: counters
+  namespace: default
+spec:
+  containers:
+    - name: counter
+      image: busybox:latest
+      command: ['sh', '-c', 'i=0; while true; do echo $i; i=$((i+1)); sleep 1; done']
+EOF
+#+end_src
+
+#+RESULTS:
+#+begin_example
+pod/counters created
+#+end_example
+
+
+We can view the logs of the runniing counter as follows:
+
+#+NAME: Check pod logs
+#+begin_src tmux
+oc --namespace default logs --container counter counters
+#+end_src
+
+
+** Send a checkpoint request
+
+Now that our sample workload is running lets use the Kubernetes API directly to inform the container runtime CRI-O to checkpoint the container.
+
+#+NAME: Send checkpoint request
+#+begin_src bash
+source .env
+node=$(oc get pod counters --output jsonpath='{.spec.nodeName}')
+curl --insecure \
+  --header "Authorization: Bearer $(oc whoami --show-token)" \
+  --request POST "${OCP_API_URL}/api/v1/nodes/${node}/proxy/checkpoint/default/counters/counter"
+#+end_src
+
+We'll see in the results that an archive has been created and is now present in local storage on the node:
+
+#+RESULTS: Send checkpoint request
+#+begin_example
+{"items":["/var/lib/kubelet/checkpoints/checkpoint-counters_default-counter-2026-04-22T22:30:17Z.tar"]}
+#+end_example
+
+
+** Copy checkpoint to local machine
+
+Let's now replicate the checkpoint archives locally so we can inspect them.
+
+#+begin_src tmux
+node=$(oc get pod counters --output jsonpath='{.spec.nodeName}')
+
+# If a debug pod hasn't already been launched do that now
+if [ -z $(oc get pod --output name | grep ${node}) ]; then
+  oc debug node/${node} --to-namespace default --quiet --no-stdin -- sleep 30&
+  oc wait --for=condition=Ready pod --selector "debug.openshift.io/managed-by=oc-debug"
+fi
+
+pod=$(oc get pod --output name | grep ${node})
+oc --namespace default rsync ${pod}:/host/var/lib/kubelet/checkpoints .
+#+end_src
+
+
+** Optional checkpoint analysis
+
+With the checkpoints copied to our local machine we can take a sneak peek before we restore.
+
+#+NAME: Inspect pod checkpoint
+#+begin_src bash
+./checkpointctl/checkpointctl inspect checkpoints/*
+#+end_src
+
+#+RESULTS: Inspect pod checkpoint
+#+begin_example
+
+Displaying container checkpoint tree view from checkpoints/checkpoint-counters_default-counter-2026-04-22T22:30:17Z.tar
+
+counter
+├── Image: docker.io/library/busybox:latest
+├── ID: 61ea9726d52ad7fa0ddea79f742d45be20161d1d79b5151103347afc296ba2f7
+├── Runtime: crun
+├── Created: 2026-04-22T22:03:03.039247459Z
+├── Checkpointed: 2026-04-22T22:30:17Z
+├── Engine: CRI-O
+├── IP: 10.234.0.10
+├── Checkpoint size: 305.5 KiB
+│   └── Memory pages size: 292.0 KiB
+└── Root FS diff size: 4.5 KiB
+
+#+end_example
+
+
+* Kubernetes pod restore
+
+With a checkpoint taken we can now restore it to another node. As outlined in the [[https://criu.org/Kubernetes#Restoring_Container_within_Kubernetes][upstream CRIU documentation]], the restore process requires building a fresh OCI image from the checkpoint.
