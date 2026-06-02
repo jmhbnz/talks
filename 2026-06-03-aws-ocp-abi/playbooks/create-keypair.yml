@@ -1,0 +1,50 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  vars:
+    aws_region: ap-southeast-1
+    key_name: ocp-agent-key
+
+    key_dir: "{{ playbook_dir }}/../keys"
+    private_key_path: "{{ key_dir }}/{{ key_name }}"
+    public_key_path: "{{ key_dir }}/{{ key_name }}.pub"
+
+  tasks:
+
+    - name: Create key directory
+      ansible.builtin.file:
+        path: "{{ key_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Check if private key exists
+      ansible.builtin.stat:
+        path: "{{ private_key_path }}"
+      register: private_key
+
+    - name: Generate keypair
+      community.crypto.openssh_keypair:
+        path: "{{ private_key_path }}"
+        type: ed25519
+        comment: "{{ key_name }}"
+      when: not private_key.stat.exists
+
+    - name: Read public key
+      ansible.builtin.slurp:
+        src: "{{ public_key_path }}"
+      register: public_key
+
+    - name: Import keypair into aws
+      amazon.aws.ec2_key:
+        region: "{{ aws_region }}"
+        name: "{{ key_name }}"
+        key_material: "{{ public_key.content | b64decode }}"
+        state: present
+
+    - name: Show result
+      ansible.builtin.debug:
+        msg:
+          - "AWS Key Pair: {{ key_name }}"
+          - "Private Key: {{ private_key_path }}"
+          - "Public Key: {{ public_key_path }}"

@@ -1,0 +1,258 @@
+#+TITLE: Agent based ocp install on aws
+#+DATE: <2026-06-02 Tue>
+
+
+A short walkthrough of installing OpenShift with the Agent Based Installer on an EC2 instance in Amazon Web Services. The overall flow will be orchestrated by [[https://github.com/ansible/ansible][ansible]].
+
+
+* Pre-requisites
+
+- [ ] A Red Hat OpenShift pull secret from [[https://console.redhat.com/openshift/install/metal/agent-based]].
+
+- [ ] An aws account, for this walkthrough I'm using an account in ~ap-southeast-1~.
+
+- [ ] The ~brew~ package manager, this flow was tested in an ~amd64~ linux system.
+
+
+* Install dependencies
+
+Let's start by ensuring ~aws~ cli, ~ansible~ and ~ansible-galaxy~ are available, we'll use the excellent ~brew~ package manager for this.
+
+#+NAME: Install brew packages
+#+begin_src bash
+brew install ansible awscli
+#+end_src
+
+#+RESULTS: Install brew packages
+#+begin_example
+#+end_example
+
+
+Once ansible is installed let's ensure we have the ~aws~ galaxy collection.
+
+#+NAME: Install aws galaxy collection
+#+begin_src bash
+ansible-galaxy collection install amazon.aws community.crypto
+#+end_src
+
+#+RESULTS: Install aws galaxy collection
+#+begin_example
+Starting galaxy collection install process
+Nothing to do. All requested collections are already installed. If you want to reinstall them, consider using `--force`.
+#+end_example
+
+
+* Configure aws credentials
+
+#+NAME: Configure aws credentials
+#+begin_src bash
+aws configure
+#+end_src
+
+
+* Run playbooks
+
+With dependencies installed we can now run the playbooks in sequence.
+
+The first playbook simple generates a new ssh key pair locally then makes this available within aws so we can use it when we spin up ec2 instances.
+
+#+NAME: Generate keypair
+#+begin_src bash
+source virtualenv/bin/activate
+ansible-playbook --inventory inventory/localhost.yml playbooks/create-keypair.yml
+#+end_src
+
+#+RESULTS: Generate keypair
+#+begin_example
+
+PLAY [localhost] ***************************************************************
+
+TASK [Create key directory] ****************************************************
+ok: [localhost]
+
+TASK [Check if private key exists] *********************************************
+ok: [localhost]
+
+TASK [Generate keypair] ********************************************************
+skipping: [localhost]
+
+TASK [Read public key] *********************************************************
+ok: [localhost]
+
+TASK [Import keypair into aws] *************************************************
+changed: [localhost]
+
+TASK [Show result] *************************************************************
+ok: [localhost] => {
+    "msg": [
+        "AWS Key Pair: ocp-agent-key",
+        "Private Key: /var/home/james/Documents/talks/2026-06-03-aws-ocp-abi/playbooks/../keys/ocp-agent-key",
+        "Public Key: /var/home/james/Documents/talks/2026-06-03-aws-ocp-abi/playbooks/../keys/ocp-agent-key.pub"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=5    changed=1    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+
+#+end_example
+
+
+Once we have a keypair available we can spin up the required ec2 instances w
+
+#+NAME: Create instances
+#+begin_src bash
+source virtualenv/bin/activate
+ansible-playbook --inventory inventory/localhost.yml playbooks/create-instances.yml
+#+end_src
+
+#+RESULTS: Create instances
+#+begin_example
+
+PLAY [localhost] ***************************************************************
+
+TASK [Get my public ip] ********************************************************
+ok: [localhost]
+
+TASK [Create vpc] **************************************************************
+ok: [localhost]
+
+TASK [Create subnet] ***********************************************************
+ok: [localhost]
+
+TASK [Create internet gateway] *************************************************
+ok: [localhost]
+
+TASK [Bastion security group] **************************************************
+ok: [localhost]
+
+TASK [OpenShift security group] ************************************************
+ok: [localhost]
+
+TASK [Create default route to internet gateway] ********************************
+changed: [localhost]
+
+TASK [Launch bastion] **********************************************************
+ok: [localhost]
+
+TASK [Launch openshift node] ***************************************************
+ok: [localhost]
+
+TASK [Display connection details] **********************************************
+ok: [localhost] => {
+    "msg": [
+        "Bastion: 54.254.169.122",
+        "OpenShift: 10.20.1.210"
+    ]
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=10   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+#+end_example
+
+
+* Prepare bastion host
+
+Once the bastion instance is up and running we can connect and start stepping through the installation of OpenShift.  We're going to stop using ~ansible~ at this point and switch to a manual ~bash~ step by step flow so we can get a really clear understanding of what steps are involved.
+
+#+NAME: Connect to server
+#+begin_src tmux
+ssh -i keys/ocp-agent-key ec2-user@54.254.169.122
+#+end_src
+
+
+Once we're connected we need to set up some dependencies so we can actually run ~openshift install~ and ~oc~.
+
+#+NAME: Install dependencies
+#+begin_src tmux
+# Install tools
+sudo dnf install --assumeyes git jq wget curl tar gzip unzip podman nmstate
+
+# Download openshift installer
+BASE_URL="https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest"
+curl -L -o openshift-install.tar.gz "${BASE_URL}/openshift-install-linux.tar.gz"
+curl -L -o openshift-client.tar.gz "${BASE_URL}/openshift-client-linux.tar.gz"
+
+# Extract archives
+tar -xvf openshift-install.tar.gz
+tar -xvf openshift-client.tar.gz
+
+# Add binaries to path
+sudo mv openshift-install oc kubectl /usr/local/bin/
+openshift-install version
+oc version --client
+
+# Cleanup
+rm openshift* README.md
+#+end_src
+
+
+* Create installation configuration
+
+Once the bastion has the tools we need we can create an installation configuration for our new openshift cluster. This is essentially done by creating a directory with an ~install-config.yaml~ file in it.
+
+#+begin_quote
+Note: Remember to update the final ~install-config.yaml~ file with your actual pull secret.
+#+end_quote
+
+#+NAME: Create install config
+#+begin_src tmux
+# Create a directory for cluster install
+mkdir cluster && cd cluster
+
+# Create a new ssh key
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/ocp-agent -N "" -C "ocp-agent-key"
+SSH_KEY="$(cat ~/.ssh/ocp-agent.pub)"
+
+# Write install-config.yaml file
+cat > install-config.yaml << EOF
+---
+apiVersion: v1
+baseDomain: example.com
+metadata:
+  name: ocp-agent
+
+compute:
+  - name: worker
+    replicas: 0
+
+controlPlane:
+  name: master
+  replicas: 1
+
+networking:
+  networkType: OVNKubernetes
+
+platform:
+  none: {}
+
+pullSecret: 'REPLACEME'
+sshKey: '${SSH_KEY}'
+EOF
+#+end_src
+
+
+* Initialise agent based installer
+
+Once the ~install-config.yaml~ is ready we can run the following command to create the corresponding ~agent-config.yaml~ so we can create our .iso file!
+
+#+NAME: Initialise agent based installer
+#+begin_src tmux
+cat > agent-config.yaml << EOF
+apiVersion: v1alpha1
+kind: AgentConfig
+metadata:
+  name: ocp-agent
+rendezvousIP: 10.20.1.210
+EOF
+#+end_src
+
+
+* Generate installation iso
+
+Time to mint an ~.iso~ file we can boot a server with to bring up the cluster.
+
+#+NAME: Create iso
+#+begin_src tmux
+openshift-install agent create image
+#+end_src

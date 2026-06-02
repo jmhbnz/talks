@@ -1,0 +1,124 @@
+---
+- hosts: localhost
+  gather_facts: false
+
+  tasks:
+
+    - name: Get my public ip
+      uri:
+        url: https://checkip.amazonaws.com
+        return_content: true
+      register: public_ip
+
+    - name: Create vpc
+      amazon.aws.ec2_vpc_net:
+        name: "{{ cluster_name }}-vpc"
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ aws_region }}"
+        dns_support: true
+        dns_hostnames: true
+      register: vpc
+
+    - name: Create subnet
+      amazon.aws.ec2_vpc_subnet:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        cidr: "{{ subnet_cidr }}"
+        az: "{{ aws_region }}a"
+        map_public: true
+        tags:
+          Name: "{{ cluster_name }}-public"
+      register: subnet
+
+    - name: Create internet gateway
+      amazon.aws.ec2_vpc_igw:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        state: present
+      register: igw
+
+    - name: Bastion security group
+      amazon.aws.ec2_security_group:
+        name: "{{ cluster_name }}-bastion"
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        description: "Bastion ssh access"
+        rules:
+          - proto: tcp
+            ports:
+              - 22
+            cidr_ip: "{{ public_ip.content | trim }}/32"
+      register: bastion_sg
+
+    - name: OpenShift security group
+      amazon.aws.ec2_security_group:
+        name: "{{ cluster_name }}-openshift"
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        description: "Cluster ingress and api"
+        rules:
+          - proto: tcp
+            ports:
+              - 80
+              - 443
+              - 6443
+            cidr_ip: 0.0.0.0/0
+      register: openshift_sg
+
+    - name: Create default route to internet gateway
+      amazon.aws.ec2_vpc_route_table:
+        region: "{{ aws_region }}"
+        vpc_id: "{{ vpc.vpc.id }}"
+        tags:
+          Name: "{{ cluster_name }}-rt"
+        subnets:
+          - "{{ subnet.subnet.id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw.gateway_id }}"
+
+    - name: Launch bastion
+      amazon.aws.ec2_instance:
+        name: "{{ cluster_name }}-bastion"
+        region: "{{ aws_region }}"
+        image_id: "{{ image_id }}"
+        instance_type: "{{ bastion_instance_type }}"
+        key_name: "{{ key_name }}"
+        network:
+          assign_public_ip: true
+        security_groups:
+          - "{{ bastion_sg.group_id }}"
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: "{{ bastion_disk_size }}"
+              volume_type: gp3
+        vpc_subnet_id: "{{ subnet.subnet.id }}"
+        wait: true
+      register: bastion
+
+    - name: Launch openshift node
+      amazon.aws.ec2_instance:
+        name: "{{ cluster_name }}-openshift"
+        region: "{{ aws_region }}"
+        image_id: "{{ image_id }}"
+        instance_type: "{{ openshift_instance_type }}"
+        key_name: "{{ key_name }}"
+        network:
+          assign_public_ip: true
+        security_groups:
+          - "{{ openshift_sg.group_id }}"
+        volumes:
+          - device_name: /dev/sda1
+            ebs:
+              volume_size: "{{ openshift_disk_size }}"
+              volume_type: gp3
+        vpc_subnet_id: "{{ subnet.subnet.id }}"
+        wait: true
+      register: openshift
+
+    - name: Display connection details
+      debug:
+        msg:
+          - "Bastion: {{ bastion.instances[0].public_ip_address }}"
+          - "OpenShift: {{ openshift.instances[0].private_ip_address }}"
