@@ -1,0 +1,23 @@
+---
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+
+  vars:
+    aws_region: ap-southeast-1
+
+    cluster_name: ocp-agent
+
+    key_name: ocp-agent-key
+
+    image_id: ami-0f4b76901ad96bd67
+
+    vpc_cidr: 10.20.0.0/16
+    subnet_cidr: 10.20.1.0/24
+
+    bastion_instance_type: t3.large
+    openshift_instance_type: m6i.4xlarge
+
+    bastion_disk_size: 100
+    openshift_disk_size: 500

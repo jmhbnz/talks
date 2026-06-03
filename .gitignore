@@ -12,7 +12,7 @@ crash.log
 *.pem
 
 # Inventories
-inventory
+#inventory
 
 # Controller config files
 *.cfg
