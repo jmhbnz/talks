@@ -1,0 +1,252 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+
+metadata:
+  name: qa-self-service-environment
+  title: QA Self-Service Environment
+  description: Provision a self-service QA environment using approved platform components.
+  tags:
+    - qa
+    - environment
+    - openshift
+    - gitops
+
+spec:
+  owner: qa-platform-team
+  type: environment
+
+  parameters:
+
+    - title: Environment Details
+      required:
+        - environmentName
+        - owner
+
+      properties:
+
+        environmentName:
+          title: Environment Name
+          type: string
+          description: Unique environment identifier
+          pattern: '^[a-z0-9-]+$'
+
+        owner:
+          title: Owner
+          type: string
+          description: Team or individual responsible
+
+        ttlDays:
+          title: Environment TTL (Days)
+          type: integer
+          default: 14
+
+    - title: Platform Components
+
+      properties:
+
+        postgres:
+          title: PostgreSQL
+          type: boolean
+          default: true
+
+        kafka:
+          title: Kafka
+          type: boolean
+          default: true
+
+        redis:
+          title: Redis
+          type: boolean
+          default: true
+
+        elasticsearch:
+          title: Elasticsearch
+          type: boolean
+          default: false
+
+        keycloak:
+          title: Keycloak
+          type: boolean
+          default: true
+
+        mockserver:
+          title: MockServer
+          type: boolean
+          default: true
+
+        wiremock:
+          title: WireMock
+          type: boolean
+          default: false
+
+    - title: Optional Release Overrides
+      description: >
+        Platform Default uses the currently approved version.
+        Select an alternative release only when required for testing.
+
+      properties:
+
+        postgresRelease:
+          title: PostgreSQL Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - postgres-stable
+            - postgres-next
+            - postgres-hotfix-2026-06
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+            - Hotfix 2026-06
+
+        kafkaRelease:
+          title: Kafka Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - kafka-stable
+            - kafka-next
+            - kafka-hotfix-2026-06
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+            - Hotfix 2026-06
+
+        redisRelease:
+          title: Redis Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - redis-stable
+            - redis-next
+            - redis-hotfix-2026-06
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+            - Hotfix 2026-06
+
+        elasticsearchRelease:
+          title: Elasticsearch Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - elasticsearch-stable
+            - elasticsearch-next
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+
+        keycloakRelease:
+          title: Keycloak Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - keycloak-stable
+            - keycloak-next
+            - keycloak-hotfix-2026-06
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+            - Hotfix 2026-06
+
+        mockserverRelease:
+          title: MockServer Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - mockserver-stable
+            - mockserver-next
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+
+        wiremockRelease:
+          title: WireMock Release
+          type: string
+          default: platform-default
+          enum:
+            - platform-default
+            - wiremock-stable
+            - wiremock-next
+          enumNames:
+            - Platform Default
+            - Stable
+            - Next
+
+  steps:
+
+    - id: fetch-base
+      name: Generate Environment Repository
+
+      action: fetch:template
+
+      input:
+        url: ./skeleton
+
+        values:
+
+          environmentName: ${{ parameters.environmentName }}
+          owner: ${{ parameters.owner }}
+          ttlDays: ${{ parameters.ttlDays }}
+
+          components:
+
+            postgres: ${{ parameters.postgres }}
+            kafka: ${{ parameters.kafka }}
+            redis: ${{ parameters.redis }}
+            elasticsearch: ${{ parameters.elasticsearch }}
+            keycloak: ${{ parameters.keycloak }}
+            mockserver: ${{ parameters.mockserver }}
+            wiremock: ${{ parameters.wiremock }}
+
+          releases:
+
+            postgres: ${{ parameters.postgresRelease }}
+            kafka: ${{ parameters.kafkaRelease }}
+            redis: ${{ parameters.redisRelease }}
+            elasticsearch: ${{ parameters.elasticsearchRelease }}
+            keycloak: ${{ parameters.keycloakRelease }}
+            mockserver: ${{ parameters.mockserverRelease }}
+            wiremock: ${{ parameters.wiremockRelease }}
+
+    - id: publish
+      name: Publish Repository
+
+      action: publish:github
+
+      input:
+        repoUrl: github.com?owner=my-org&repo=${{ parameters.environmentName }}
+        defaultBranch: main
+        description: QA Environment - ${{ parameters.environmentName }}
+
+    - id: register
+
+      name: Register Catalog Entry
+
+      action: catalog:register
+
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+
+    links:
+
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+
+      - title: Catalog Entry
+        entityRef: ${{ steps.register.output.entityRef }}
