@@ -1,0 +1,100 @@
+#+TITLE: Advanced cluster security installation
+#+DATE: <2026-10-15 Thu>
+#+AUTHOR: James Blair
+
+
+This document captures the steps required to set up an instance of Red Hat Advanced Cluster Security on OpenShift ~4.20+~ using declarative, gitops friendly resource manifests.
+
+
+* Log in to cluster
+
+This guide assumes you already have an OpenShift cluster. Let's start by logging in as the cluster admin. Define these variables in a ~.env~ file in the base of this directory.
+
+#+NAME: Login to openshift cluster
+#+begin_src bash
+source .env
+oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+#+RESULTS: Login to openshift cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 88 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
+
+* Deploy rhacs
+
+Once we are logged in to our cluster, we can use the steps below to install Red Hat Advanced Cluster Security.
+
+** Install rhacs operator
+
+#+NAME: Install rhacs operator
+#+begin_src bash
+oc apply --filename rhacs/operator.yaml
+#+end_src
+
+#+RESULTS: Install rhacs operator
+#+begin_example
+namespace/rhacs-operator created
+operatorgroup.operators.coreos.com/rhacs-operator created
+subscription.operators.coreos.com/rhacs-operator created
+#+end_example
+
+
+** Deploy rhacs central
+
+Once the operator is installed we can deploy ~central~.
+
+#+NAME: Deploy central
+#+begin_src bash
+oc apply --filename rhacs/central.yaml
+#+end_src
+
+#+RESULTS: Deploy central
+#+begin_example
+namespace/stackrox created
+central.platform.stackrox.io/stackrox-central-services created
+#+end_example
+
+
+** Log in to rhacs
+
+With central deployed, we can log in via the passthrough ~route~ with the default ~admin~ username and the password sourced from the generated ~secret~.
+
+#+NAME: Rhacs login
+#+begin_src bash
+xdg-open "https://"$(oc get route --namespace stackrox central --output jsonpath='{.spec.host}')
+
+echo $(oc get secret --namespace stackrox central-htpasswd --output jsonpath='{.data.password}' | base64 --decode) | wl-copy
+#+end_src
+
+#+RESULTS: Rhacs login
+#+begin_example
+#+end_example
+
+
+** Secure cluster
+
+With central deployed and running we can now deploy the stackrox secured cluster services.
+
+#+NAME: Secure cluster
+#+begin_src bash
+oc apply --filename rhacs/secured.yaml
+#+end_src
+
+#+RESULTS: Secure cluster
+#+begin_example
+serviceaccount/acs-cluster-registration created
+clusterrole.rbac.authorization.k8s.io/acs-cluster-registration created
+clusterrolebinding.rbac.authorization.k8s.io/acs-cluster-registration created
+job.batch/acs-cluster-registration created
+securedcluster.platform.stackrox.io/local created
+#+end_example
+
+
