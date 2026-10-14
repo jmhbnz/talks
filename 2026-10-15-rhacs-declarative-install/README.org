@@ -6,9 +6,9 @@
 This document captures the steps required to set up an instance of Red Hat Advanced Cluster Security on OpenShift ~4.20+~ using declarative, gitops friendly resource manifests.
 
 
-* Log in to cluster
+* TODO Log in to cluster
 
-This guide assumes you already have an OpenShift cluster. Let's start by logging in as the cluster admin. Define these variables in a ~.env~ file in the base of this directory.
+This guide assumes you already have an OpenShift cluster. Let's start by logging in as the cluster admin. Define variables for ~OCP_API_URL~, ~OCP_USERNAME~ and ~OCP_PASSWORD~ in a ~.env~ file in the base of this directory before running the commands below:
 
 #+NAME: Login to openshift cluster
 #+begin_src bash
@@ -22,17 +22,19 @@ WARNING: Using insecure TLS client config. Setting this option is not supported!
 
 Login successful.
 
-You have access to 88 projects, the list has been suppressed. You can list all projects with 'oc projects'
+You have access to 78 projects, the list has been suppressed. You can list all projects with 'oc projects'
 
 Using project "default".
 #+end_example
 
 
-* Deploy rhacs
+* TODO Deploy rhacs
 
 Once we are logged in to our cluster, we can use the steps below to install Red Hat Advanced Cluster Security.
 
-** Install rhacs operator
+** TODO Install rhacs operator
+
+We'll install Advanced Cluster Security through it's operator, by creating the required ~Subscription~ and ~OperatorGroup~ resources, within our chosen ~rhacs-operator~ namespace.
 
 #+NAME: Install rhacs operator
 #+begin_src bash
@@ -47,9 +49,9 @@ subscription.operators.coreos.com/rhacs-operator created
 #+end_example
 
 
-** Deploy rhacs central
+** TODO Deploy rhacs central
 
-Once the operator is installed we can deploy ~central~.
+Once the operator is installed we can deploy ~central~. [[https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_security_for_kubernetes/4.11/html/installing/installing-rhacs-on-red-hat-openshift][Central]] is the core management interface, API and data persistence component for Advanced Cluster Security.
 
 #+NAME: Deploy central
 #+begin_src bash
@@ -63,7 +65,7 @@ central.platform.stackrox.io/stackrox-central-services created
 #+end_example
 
 
-** Log in to rhacs
+** TODO Log in to rhacs
 
 With central deployed, we can log in via the passthrough ~route~ with the default ~admin~ username and the password sourced from the generated ~secret~.
 
@@ -79,9 +81,9 @@ echo $(oc get secret --namespace stackrox central-htpasswd --output jsonpath='{.
 #+end_example
 
 
-** Secure cluster
+** TODO Secure cluster
 
-With central deployed and running we can now deploy the stackrox secured cluster services.
+With central deployed and running we can now deploy the stackrox secured cluster services. One central instance can secure many different clusters.
 
 #+NAME: Secure cluster
 #+begin_src bash
