@@ -4,6 +4,8 @@ kind: Namespace
 metadata:
   annotations:
   name: stackrox
+  labels:
+    argocd.argoproj.io/managed-by: openshift-gitops
 
 ---
 apiVersion: platform.stackrox.io/v1alpha1

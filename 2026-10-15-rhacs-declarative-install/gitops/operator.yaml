@@ -9,14 +9,14 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: openshift-gitops-operator
-  namespace: openshift-gitops-operator
+  namespace: openshift-gitops
 
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   name: openshift-gitops-operator
-  namespace: openshift-gitops-operator
+  namespace: openshift-gitops
 spec:
   channel: gitops-1.22
   installPlanApproval: Automatic
