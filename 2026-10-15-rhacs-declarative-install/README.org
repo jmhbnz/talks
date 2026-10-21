@@ -16,23 +16,12 @@ source .env
 oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
 #+end_src
 
-#+RESULTS: Login to openshift cluster
-#+begin_example
-WARNING: Using insecure TLS client config. Setting this option is not supported!
 
-Login successful.
-
-You have access to 78 projects, the list has been suppressed. You can list all projects with 'oc projects'
-
-Using project "default".
-#+end_example
-
-
-* TODO Deploy rhacs
+* [X] Deploy rhacs
 
 Once we are logged in to our cluster, we can use the steps below to install Red Hat Advanced Cluster Security.
 
-** TODO Install rhacs operator
+** [X] Install rhacs operator
 
 We'll install Advanced Cluster Security through it's operator, by creating the required ~Subscription~ and ~OperatorGroup~ resources, within our chosen ~rhacs-operator~ namespace.
 
@@ -49,7 +38,7 @@ subscription.operators.coreos.com/rhacs-operator created
 #+end_example
 
 
-** TODO Deploy rhacs central
+** [X] Deploy rhacs central
 
 Once the operator is installed we can deploy ~central~. [[https://docs.redhat.com/en/documentation/red_hat_advanced_cluster_security_for_kubernetes/4.11/html/installing/installing-rhacs-on-red-hat-openshift][Central]] is the core management interface, API and data persistence component for Advanced Cluster Security.
 
@@ -65,7 +54,7 @@ central.platform.stackrox.io/stackrox-central-services created
 #+end_example
 
 
-** TODO Log in to rhacs
+** [X] Log in to rhacs
 
 With central deployed, we can log in via the passthrough ~route~ with the default ~admin~ username and the password sourced from the generated ~secret~.
 
@@ -81,7 +70,7 @@ echo $(oc get secret --namespace stackrox central-htpasswd --output jsonpath='{.
 #+end_example
 
 
-** TODO Secure cluster
+** [X] Secure cluster
 
 With central deployed and running we can now deploy the stackrox secured cluster services. One central instance can secure many different clusters.
 
@@ -100,3 +89,29 @@ securedcluster.platform.stackrox.io/local created
 #+end_example
 
 
+* TODO Automated gitops install
+
+With the initial installation process validated in a step by step fashion, we can now proceed to automate the entire process using a [[https://www.redhat.com/en/topics/devops/what-is-gitops][gitops]] methodology.
+
+** TODO Install gitops operator
+
+On OpenShift, the supported gitops tooling is [[https://argo-cd.readthedocs.io/en/stable/][ArgoCD]], which is installed via **OpenShift GitOps** operator.
+
+Let's install ArgoCD now by creating the required ~Subscription~ and ~OperatorGroup~ resources.
+
+#+NAME: Install gitops operator
+#+begin_src tmux
+oc apply --filename gitops/operator.yaml
+#+end_src
+
+
+** TODO Install rhacs via gitops
+
+With argocd installed, we can create an ~Application~ resource to tell our cluster to keep our rhacs manifests in sync on our cluster.
+
+#+NAME: Create rhacs application
+#+begin_src tmux
+oc apply --filename gitops/application.yaml
+#+end_src
+
+With those steps completed, we now have a declarative installation of Red Hat Advanced Cluster Security that will be continually enforced by our ArgoCD instance 🎉
