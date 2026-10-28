@@ -70,15 +70,11 @@ central.platform.stackrox.io/stackrox-central-services created
 With central deployed, we can log in via the passthrough ~route~ with the default ~admin~ username and the password sourced from the generated ~secret~.
 
 #+NAME: Rhacs login
-#+begin_src bash
+#+begin_src bash :results none
 xdg-open "https://"$(oc get route --namespace stackrox central --output jsonpath='{.spec.host}')
 
 echo $(oc get secret --namespace stackrox central-htpasswd --output jsonpath='{.data.password}' | base64 --decode) | wl-copy
 #+end_src
-
-#+RESULTS: Rhacs login
-#+begin_example
-#+end_example
 
 
 ** [X] Secure cluster
@@ -126,3 +122,16 @@ oc apply --filename gitops/application.yaml
 #+end_src
 
 With those steps completed, we now have a declarative installation of Red Hat Advanced Cluster Security that will be continually enforced by our ArgoCD instance 🎉
+
+
+** TODO Review application sync
+
+With openshift gitops deployed, and our application created, we can log in to ArgoCD via the ~route~ with the default ~admin~ username and the password sourced from the generated ~secret~.
+
+#+NAME: Argocd login
+#+begin_src bash :results none
+xdg-open "https://"$(oc get route --namespace openshift-gitops openshift-gitops-server --output jsonpath='{.spec.host}')
+
+echo $(oc get secret --namespace openshift-gitops openshift-gitops-cluster --output jsonpath='{.data.admin\.password}' | base64 --decode) | wl-copy
+#+end_src
+
