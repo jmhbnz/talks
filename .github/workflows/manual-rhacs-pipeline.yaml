@@ -59,3 +59,11 @@ jobs:
         run: |
           roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
           roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
+
+      - name: Scan deployment for policy violations
+        shell: bash
+        env:
+          # Required for Central re-encrypt route
+          GRPC_ENFORCE_ALPN_ENABLED: "false"
+        run: |
+          roxctl deployment check --file="2024-08-28-rhacs-actions-pipeline/deployment.yaml" --output=table

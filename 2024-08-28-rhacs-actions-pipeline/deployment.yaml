@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openjdk25-app
+  namespace: my-namespace
+  labels:
+    app: openjdk25-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: openjdk25-app
+  template:
+    metadata:
+      labels:
+        app: openjdk25-app
+    spec:
+      containers:
+        - name: app
+          image: quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}
+          # Alternatively, you can use the original base if built without custom wrappers:
+          # image: registry.access.redhat.com/hi/openjdk:25
+          imagePullPolicy: IfNotPresent
+          
+          # Adjust the starting command and ports depending on your java workload config
+          ports:
+            - containerPort: 8080
+              name: http
+          
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1.5Gi
+            requests:
+              cpu: "500m"
+              memory: 512Mi
+              
+          env:
+            - name: JAVA_OPTS
+              value: "-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
+            - name: PORT
+              value: "8080"
+              
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+                
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness # Custom java liveness endpoint
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness # Custom java readiness endpoint
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            
+      restartPolicy: Always
