@@ -3,24 +3,23 @@
 #+AUTHOR: James Blair
 
 
-Red Hat Advanced Cluster Security can be easily integrated into an existing GitHub actions pipeline through the existing Stackrox suite of [[https://github.com/marketplace?query=stackrox][open source actions]]. The ~roxctl~ cli can be used to scan images for vulnerabilities or common misconfigurations.
+Red Hat Advanced Cluster Security can be easily integrated into an existing GitHub actions pipeline through the existing Stackrox suite of [[https://github.com/marketplace?query=stackrox][open source actions]]. The ~roxctl~ cli can be used to scan images for vulnerabilities or common misconfigurations as well as advanced features for generating network policies.
 
-* Configure rhacs github oidc auth
+* Configure rhacs authentication
 
-Red Hat Advanced Cluster Security for Kubernetes (RHACS) provides the ability to configure short-lived access to the user interface and API calls.
+Red Hat Advanced Cluster Security for Kubernetes (RHACS) provides the ability to configure short-lived access to the user interface and API calls. You can configure this by exchanging OpenID Connect (OIDC) identity tokens for a RHACS-issued token.
 
-You can configure this by exchanging OpenID Connect (OIDC) identity tokens for a RHACS-issued token.
+We recommend this especially for Continuous Integration (CI) usage, where short-lived access is preferable over long-lived API tokens. Refer: https://docs.openshift.com/acs/4.11/operating/manage-user-access/configure-short-lived-access.html
 
-We recommend this especially for Continuous Integration (CI) usage, where short-lived access is preferable over long-lived API tokens.
-
-Refer: https://docs.openshift.com/acs/4.5/operating/manage-user-access/configure-short-lived-access.html
+For the purposes of this short demonstration we'll use a standard authentication token.
 
 
 * Create github actions pipeline
 
-An example pipeline is included below and in this repository.
+An example pipeline is included below and in this repository. This is set to ~on: workflow_dispatch~, meaning that it will only be run if we trigger it manually, for exmaple from the GitHub web interface, or by running ~gh workflow run~ in a terminal.
 
-#+begin_src yaml
+#+NAME: Github actions pipeline
+#+begin_src yaml :tangle ../.github/workflows/manual-rhacs-pipeline.yaml
 ---
 name: Secure image build
 on: workflow_dispatch
@@ -35,25 +34,25 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build image
-        uses: redhat-actions/buildah-build@v2
+        id: build-image
+        uses: redhat-actions/buildah-build@v3
         with:
-          image: quay.io/rh_ee_jablair/ubi9
+          image: ubi9/ubi
           tags: v0.0.1-${{ github.sha }}
           containerfiles: |
             ./2024-08-28-rhacs-actions-pipeline/Containerfile
 
       - name: Push to quay.io
-        uses: redhat-actions/push-to-registry@v2
+        uses: redhat-actions/push-to-registry@v3
         with:
-          image: ubi9
-          tags: v0.0.1-${{ github.sha }}
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
           registry: quay.io/rh_ee_jablair
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
-
 
   scan-image:
     runs-on: ubuntu-latest
@@ -66,18 +65,16 @@ jobs:
         uses: stackrox/central-login@v1
         with:
           endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
-          skip-tls-verify: true
 
       - name: Install roxctl
         uses: stackrox/roxctl-installer-action@v1
         with:
           central-endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
           central-token: ${{ secrets.ROX_API_TOKEN }}
-          skip-tls-verify: true
 
       - name: Scan image with roxctl
         shell: bash
         run: |
-          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
-          roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
+          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
+          roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
 #+end_src
