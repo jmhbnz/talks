@@ -11,6 +11,33 @@ Red Hat Advanced Cluster Security for Kubernetes (RHACS) provides the ability to
 
 We recommend this especially for Continuous Integration (CI) usage, where short-lived access is preferable over long-lived API tokens. Refer: https://docs.openshift.com/acs/4.11/operating/manage-user-access/configure-short-lived-access.html
 
+The below snippet quickly configures an m2m authentication integration for this ~jmhbnz/talks~ repository.
+
+#+NAME: Lock process baseline
+#+begin_src bash
+source .env
+
+curl "https://${CENTRAL_URL}/v1/auth/m2m" --silent \
+    --header "Authorization: Bearer ${ROX_API_TOKEN}" \
+    --header "Content-Type: application/json" \
+    --data-raw '  {"config": {
+      "issuer": "https://token.actions.githubusercontent.com",
+      "audience": "central.stackrox.io",
+      "mappings": [{
+        "key": "sub",
+        "valueExpression": "repo:jmhbnz/talks.*",
+        "role":"Continuous Integration"
+      }],
+     "tokenExpirationDuration": "15m",
+     "type": "GITHUB_ACTIONS",
+     "id": ""}}'
+#+end_src
+
+#+RESULTS: Lock process baseline
+#+begin_example
+{"config":{"id":"4c3c456d-60cd-4cd2-a763-59da16e45320","type":"GITHUB_ACTIONS","tokenExpirationDuration":"15m","mappings":[{"key":"sub","valueExpression":"repo:jmhbnz/talks.*","role":"Continuous Integration"}],"issuer":"https://token.actions.githubusercontent.com","traits":{"mutabilityMode":"ALLOW_MUTATE","visibility":"VISIBLE","origin":"IMPERATIVE"},"audience":"central.stackrox.io"}}
+#+end_example
+
 
 * Create github actions pipeline
 
