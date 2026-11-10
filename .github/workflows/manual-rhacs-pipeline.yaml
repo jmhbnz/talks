@@ -53,6 +53,9 @@ jobs:
 
       - name: Scan image with roxctl
         shell: bash
+        env:
+          # Central re-encrypt terminates on the routers and doesn't negotiate h2
+          GRPC_ENFORCE_ALPN_ENABLED: "false"
         run: |
-          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
-          roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}" --insecure-skip-tls-verify
+          roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
+          roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
