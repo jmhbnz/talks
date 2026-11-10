@@ -42,13 +42,14 @@ jobs:
       - name: Rhacs login
         uses: stackrox/central-login@v1
         with:
-          endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
+          audience: central.stackrox.io
+          endpoint: ${{ vars.CENTRAL_ENDPOINT }}
 
       - name: Install roxctl
         uses: stackrox/roxctl-installer-action@v1
         with:
-          central-endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
-          central-token: ${{ secrets.ROX_API_TOKEN }}
+          central-endpoint: https://${{ env.ROX_ENDPOINT }}
+          central-token: ${{ env.ROX_API_TOKEN }}
 
       - name: Scan image with roxctl
         shell: bash

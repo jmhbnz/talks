@@ -11,8 +11,6 @@ Red Hat Advanced Cluster Security for Kubernetes (RHACS) provides the ability to
 
 We recommend this especially for Continuous Integration (CI) usage, where short-lived access is preferable over long-lived API tokens. Refer: https://docs.openshift.com/acs/4.11/operating/manage-user-access/configure-short-lived-access.html
 
-For the purposes of this short demonstration we'll use a standard authentication token.
-
 
 * Create github actions pipeline
 
@@ -64,13 +62,14 @@ jobs:
       - name: Rhacs login
         uses: stackrox/central-login@v1
         with:
-          endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
+          audience: central.stackrox.io
+          endpoint: ${{ vars.CENTRAL_ENDPOINT }}
 
       - name: Install roxctl
         uses: stackrox/roxctl-installer-action@v1
         with:
-          central-endpoint: ${{ secrets.CENTRAL_ENDPOINT }}
-          central-token: ${{ secrets.ROX_API_TOKEN }}
+          central-endpoint: https://${{ env.ROX_ENDPOINT }}
+          central-token: ${{ env.ROX_API_TOKEN }}
 
       - name: Scan image with roxctl
         shell: bash
