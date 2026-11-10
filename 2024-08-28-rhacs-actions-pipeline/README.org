@@ -107,6 +107,28 @@ jobs:
           roxctl image scan --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
           roxctl image check --output=table --image="quay.io/rh_ee_jablair/ubi9/ubi:v0.0.1-${{ github.sha }}"
 
+  scan-deployment:
+    runs-on: ubuntu-latest
+    needs: scan-image
+    permissions:
+      id-token: write
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Rhacs login
+        uses: stackrox/central-login@v1
+        with:
+          audience: central.stackrox.io
+          endpoint: ${{ vars.CENTRAL_ENDPOINT }}
+
+      - name: Install roxctl
+        uses: stackrox/roxctl-installer-action@v1
+        with:
+          central-endpoint: https://${{ env.ROX_ENDPOINT }}
+          central-token: ${{ env.ROX_API_TOKEN }}
+
       - name: Scan deployment for policy violations
         shell: bash
         env:
@@ -114,5 +136,4 @@ jobs:
           GRPC_ENFORCE_ALPN_ENABLED: "false"
         run: |
           roxctl deployment check --file="2024-08-28-rhacs-actions-pipeline/deployment.yaml" --output=table
-
 #+end_src
