@@ -71,7 +71,7 @@ With central deployed, we can log in via the passthrough ~route~ with the defaul
 
 #+NAME: Rhacs login
 #+begin_src bash :results none
-xdg-open "https://"$(oc get route --namespace stackrox central --output jsonpath='{.spec.host}')
+xdg-open "https://"$(oc get route --namespace stackrox central-reencrypt --output jsonpath='{.spec.host}')
 
 echo $(oc get secret --namespace stackrox central-htpasswd --output jsonpath='{.data.password}' | base64 --decode) | wl-copy
 #+end_src
@@ -107,9 +107,16 @@ On OpenShift, the supported gitops tooling is [[https://argo-cd.readthedocs.io/e
 Let's install ArgoCD now by creating the required ~Subscription~ and ~OperatorGroup~ resources.
 
 #+NAME: Install gitops operator
-#+begin_src tmux
+#+begin_src bash
 oc apply --filename gitops/operator.yaml
 #+end_src
+
+#+RESULTS: Install gitops operator
+#+begin_example
+namespace/openshift-gitops-operator created
+operatorgroup.operators.coreos.com/openshift-gitops-operator created
+subscription.operators.coreos.com/openshift-gitops-operator created
+#+end_example
 
 
 ** TODO Install rhacs via gitops
@@ -117,9 +124,14 @@ oc apply --filename gitops/operator.yaml
 With argocd installed, we can create an ~Application~ resource to tell our cluster to keep our rhacs manifests in sync on our cluster.
 
 #+NAME: Create rhacs application
-#+begin_src tmux
+#+begin_src bash
 oc apply --filename gitops/application.yaml
 #+end_src
+
+#+RESULTS: Create rhacs application
+#+begin_example
+application.argoproj.io/rhacs created
+#+end_example
 
 With those steps completed, we now have a declarative installation of Red Hat Advanced Cluster Security that will be continually enforced by our ArgoCD instance 🎉
 
