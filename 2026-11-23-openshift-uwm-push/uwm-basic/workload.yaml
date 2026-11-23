@@ -1,0 +1,57 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: uwm-demo
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-example-app
+  namespace: uwm-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-example-app
+  template:
+    metadata:
+      labels:
+        app: prometheus-example-app
+    spec:
+      containers:
+        - name: prometheus-example-app
+          image: quay.io/brancz/prometheus-example-app:v0.6.0
+          ports:
+            - name: web
+              containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-example-app
+  namespace: uwm-demo
+  labels:
+    app: prometheus-example-app
+spec:
+  selector:
+    app: prometheus-example-app
+  ports:
+    - name: web
+      port: 8080
+      targetPort: web
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: prometheus-example-app
+  namespace: uwm-demo
+spec:
+  port:
+    targetPort: web
+  to:
+    kind: Service
+    name: prometheus-example-app

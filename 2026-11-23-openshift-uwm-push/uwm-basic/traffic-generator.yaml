@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: uwm-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator
+  template:
+    metadata:
+      labels:
+        app: traffic-generator
+    spec:
+      containers:
+        - name: traffic-generator
+          image: docker.io/library/busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              paths="/ /about /api/users /products /err /internal-err"
+              while true; do
+                path=$(echo ${paths} | cut -d ' ' -f $((RANDOM % 6 + 1)))
+                wget -q -O /dev/null "http://prometheus-example-app:8080${path}?request=${RANDOM}"
+                echo "$(date +%T) GET ${path}"
+                sleep $((RANDOM % 5 + 1))
+              done

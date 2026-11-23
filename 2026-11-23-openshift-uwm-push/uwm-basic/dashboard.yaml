@@ -1,0 +1,261 @@
+---
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  labels:
+    app.kubernetes.io/name: uwm-demo-http-requests
+    app.kubernetes.io/part-of: uwm-demo
+  name: uwm-demo-http-requests
+  namespace: uwm-demo
+spec:
+  config:
+    display:
+      description: HTTP request metrics for the prometheus-example-app in the uwm-demo namespace
+      name: UWM Demo - HTTP Requests
+    duration: 1h
+    layouts:
+      - kind: Grid
+        spec:
+          display:
+            title: HTTP Request Overview
+          items:
+            - content:
+                $ref: '#/spec/panels/http_request_rate'
+              height: 6
+              width: 12
+              x: 0
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_error_rate'
+              height: 6
+              width: 12
+              x: 12
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_request_duration_p99'
+              height: 6
+              width: 12
+              x: 0
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_inflight_requests'
+              height: 6
+              width: 12
+              x: 12
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_request_rate_by_code'
+              height: 6
+              width: 12
+              x: 0
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_request_rate_by_method'
+              height: 6
+              width: 12
+              x: 12
+              "y": 0
+            - content:
+                $ref: '#/spec/panels/http_request_duration_heatmap'
+              height: 6
+              width: 24
+              x: 0
+              "y": 0
+    panels:
+      http_error_rate:
+        kind: Panel
+        spec:
+          display:
+            description: Rate of HTTP 4xx and 5xx responses per second
+            name: HTTP Error Rate (4xx/5xx)
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: errors/s
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: rate(http_requests_total{namespace="$namespace", job="$job", code=~"4..|5.."}[5m])
+                    seriesNameFormat: '{{method}} {{code}} {{handler}}'
+      http_inflight_requests:
+        kind: Panel
+        spec:
+          display:
+            description: Current number of HTTP requests being processed
+            name: In-Flight HTTP Requests
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.2
+              yAxis:
+                label: requests
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: http_inflight_requests{namespace="$namespace", job="$job"}
+                    seriesNameFormat: In-Flight ({{pod}})
+      http_request_duration_heatmap:
+        kind: Panel
+        spec:
+          display:
+            description: Distribution of HTTP request durations over time (avg duration)
+            name: Request Duration Distribution
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: seconds
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: sum(rate(http_request_duration_seconds_sum{namespace="$namespace", job="$job"}[5m])) by (handler) / sum(rate(http_request_duration_seconds_count{namespace="$namespace", job="$job"}[5m])) by (handler)
+                    seriesNameFormat: avg duration {{handler}}
+      http_request_duration_p99:
+        kind: Panel
+        spec:
+          display:
+            description: Request duration percentiles for the prometheus-example-app
+            name: HTTP Request Latency (p50 / p95 / p99)
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: seconds
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{namespace="$namespace", job="$job"}[5m])) by (le, handler))
+                    seriesNameFormat: p50 {{handler}}
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="$namespace", job="$job"}[5m])) by (le, handler))
+                    seriesNameFormat: p95 {{handler}}
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace="$namespace", job="$job"}[5m])) by (le, handler))
+                    seriesNameFormat: p99 {{handler}}
+      http_request_rate:
+        kind: Panel
+        spec:
+          display:
+            description: Total HTTP requests per second for the prometheus-example-app
+            name: HTTP Request Rate (req/s)
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: req/s
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: rate(http_requests_total{namespace="$namespace", job="$job"}[5m])
+                    seriesNameFormat: '{{method}} {{handler}} ({{code}})'
+      http_request_rate_by_code:
+        kind: Panel
+        spec:
+          display:
+            description: HTTP request rate broken down by HTTP status code
+            name: Request Rate by Status Code
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: req/s
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: sum(rate(http_requests_total{namespace="$namespace", job="$job"}[5m])) by (code)
+                    seriesNameFormat: HTTP {{code}}
+      http_request_rate_by_method:
+        kind: Panel
+        spec:
+          display:
+            description: HTTP request rate broken down by HTTP method (GET, POST, etc.)
+            name: Request Rate by HTTP Method
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: req/s
+          queries:
+            - kind: TimeSeriesQuery
+              spec:
+                plugin:
+                  kind: PrometheusTimeSeriesQuery
+                  spec:
+                    query: sum(rate(http_requests_total{namespace="$namespace", job="$job"}[5m])) by (method)
+                    seriesNameFormat: '{{method}}'
+    variables:
+      - kind: TextVariable
+        spec:
+          display:
+            hidden: false
+            name: Namespace
+          name: namespace
+          value: uwm-demo
+      - kind: TextVariable
+        spec:
+          display:
+            hidden: false
+            name: Job
+          name: job
+          value: prometheus-example-app

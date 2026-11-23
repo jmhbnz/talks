@@ -1,0 +1,136 @@
+apiVersion: perses.dev/v1alpha2
+kind: PersesDashboard
+metadata:
+  labels:
+    app.kubernetes.io/name: uwm-push-batch-jobs
+    app.kubernetes.io/part-of: uwm-demo
+  name: uwm-push-batch-jobs
+  namespace: uwm-demo
+spec:
+  config:
+    display:
+      description: Metrics pushed by short lived jobs via the Prometheus Pushgateway
+      name: UWM Push - Batch Jobs
+    duration: 1h
+    layouts:
+    - kind: Grid
+      spec:
+        display:
+          title: Batch Job Metrics
+        items:
+        - content:
+            $ref: '#/spec/panels/batch_job_duration'
+          height: 6
+          width: 12
+          x: 0
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/batch_job_status'
+          height: 6
+          width: 12
+          x: 12
+          "y": 0
+        - content:
+            $ref: '#/spec/panels/push_age'
+          height: 6
+          width: 24
+          x: 0
+          "y": 6
+    panels:
+      batch_job_duration:
+        kind: Panel
+        spec:
+          display:
+            description: Duration reported by the batch job on its last push
+            name: Batch Job Duration
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: seconds
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  query: batch_job_duration_seconds{namespace="uwm-demo", job="pushgateway",
+                    exported_job="batch-demo"}
+                  seriesNameFormat: '{{exported_job}} duration'
+      batch_job_status:
+        kind: Panel
+        spec:
+          display:
+            description: Result reported by the batch job on its last push
+            name: Batch Job Status
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: status
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  query: batch_job_status{namespace="uwm-demo", job="pushgateway",
+                    exported_job="batch-demo"}
+                  seriesNameFormat: '{{exported_job}} {{result}}'
+      push_age:
+        kind: Panel
+        spec:
+          display:
+            description: How long ago the batch job last pushed its metrics
+            name: Time Since Last Push
+          plugin:
+            kind: TimeSeriesChart
+            spec:
+              legend:
+                mode: list
+                position: bottom
+              visual:
+                areaOpacity: 0.1
+              yAxis:
+                label: seconds
+          queries:
+          - kind: TimeSeriesQuery
+            spec:
+              plugin:
+                kind: PrometheusTimeSeriesQuery
+                spec:
+                  query: time() - push_time_seconds{namespace="uwm-demo", job="pushgateway",
+                    exported_job="batch-demo"}
+                  seriesNameFormat: '{{exported_job}} age'
+    variables:
+    - kind: TextVariable
+      spec:
+        display:
+          hidden: false
+          name: Namespace
+        name: namespace
+        value: uwm-demo
+    - kind: TextVariable
+      spec:
+        display:
+          hidden: false
+          name: Job
+        name: job
+        value: pushgateway
+    - kind: TextVariable
+      spec:
+        display:
+          hidden: false
+          name: Exported Job
+        name: exported_job
+        value: batch-demo

@@ -1,0 +1,351 @@
+#+TITLE: OpenShift user workload monitoring
+#+DATE: <2026-11-23 Mon>
+#+AUTHOR: James Blair
+
+
+This document captures the steps required to enable user workload monitoring on an OpenShift ~4.20+~ cluster and deploy a sample workload that exposes Prometheus metrics. Once the ~ServiceMonitor~ is in place those metrics will be scraped by the user workload Prometheus instance and become queryable via the cluster's Thanos Querier 🎉
+
+
+* Pre-requisites
+
+- [ ] An OpenShift Cluster with cluster admin permissions, these instructions have been tested with OpenShift ~4.20~.
+
+- [ ] The ~oc~ command line tool available in your path. Before we begin, let's ensure we are logged into the cluster with ~oc~:
+
+#+NAME: Login to openshift cluster
+#+begin_src bash
+source .env
+oc login "${OCP_API_URL}" --username "${OCP_USERNAME}" --password "${OCP_PASSWORD}" --insecure-skip-tls-verify
+#+end_src
+
+#+RESULTS: Login to openshift cluster
+#+begin_example
+WARNING: Using insecure TLS client config. Setting this option is not supported!
+
+Login successful.
+
+You have access to 100 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "default".
+#+end_example
+
+
+* Setup demo environment
+
+** Enable user workload monitoring
+
+By default OpenShift only scrapes metrics for platform components. To collect metrics from our own workloads we need to opt in by setting ~enableUserWorkload~ to ~true~ in the ~cluster-monitoring-config~ ~ConfigMap~ in the ~openshift-monitoring~ namespace, as outlined in the [[https://docs.redhat.com/en/documentation/monitoring_stack_for_red_hat_openshift/4.20/html/configuring_user_workload_monitoring/index][documentation]].
+
+#+NAME: Enable user workload monitoring
+#+begin_src bash
+oc apply --filename uwm-basic/cluster-monitoring-config.yaml
+#+end_src
+
+#+RESULTS: Enable user workload monitoring
+#+begin_example
+configmap/cluster-monitoring-config configured
+#+end_example
+
+
+It can take a minute or two for the operator to reconcile the new configuration. We can watch the ~openshift-user-workload-monitoring~ namespace until the ~prometheus-user-workload~ and ~thanos-ruler-user-workload~ pods are running:
+
+#+NAME: Check user workload monitoring pods
+#+begin_src bash
+oc get pods --namespace openshift-user-workload-monitoring
+#+end_src
+
+#+RESULTS: Check user workload monitoring pods
+#+begin_example
+NAME                                   READY   STATUS    RESTARTS   AGE
+prometheus-operator-7b9c8f4c99-c4x9j   2/2     Running   0          80m
+prometheus-user-workload-0             6/6     Running   0          80m
+prometheus-user-workload-1             6/6     Running   0          80m
+thanos-ruler-user-workload-0           4/4     Running   0          80m
+thanos-ruler-user-workload-1           4/4     Running   0          80m
+#+end_example
+
+
+** Deploy sample workload
+
+With user workload monitoring up and running let's deploy a small sample application that exposes Prometheus metrics on ~:8080/metrics~. Alongside the ~Deployment~ we'll create a ~Service~ to expose it and a ~Route~ for access from outside the cluster.
+
+#+NAME: Deploy sample workload
+#+begin_src bash
+oc apply --filename uwm-basic/workload.yaml
+#+end_src
+
+#+RESULTS: Deploy sample workload
+#+begin_example
+namespace/uwm-demo unchanged
+deployment.apps/prometheus-example-app unchanged
+service/prometheus-example-app unchanged
+route.route.openshift.io/prometheus-example-app unchanged
+#+end_example
+
+
+** Create service monitor
+
+The user workload Prometheus won't scrape our new ~Service~ until we tell it to with a ~ServiceMonitor~ custom resource. This one selects the ~prometheus-example-app~ ~Service~ in the ~uwm-demo~ namespace and scrapes the named ~web~ port every 30 seconds.
+
+#+NAME: Create service monitor
+#+begin_src bash
+oc apply --filename uwm-basic/service-monitor.yaml
+#+end_src
+
+#+RESULTS: Create service monitor
+#+begin_example
+servicemonitor.monitoring.coreos.com/prometheus-example-app unchanged
+#+end_example
+
+
+* Generate sample traffic
+
+The example app exposes an ~http_requests_total~ counter labelled by response code. To keep the metrics moving we'll deploy a small long-running ~Deployment~ that continually sends requests to random URLs on the sample app at random intervals. The list includes the app's ~err~ and ~internal-err~ endpoints so we also get ~404~ and ~500~ responses to populate the error panels on our dashboard:
+
+#+NAME: Deploy traffic generator
+#+begin_src bash
+oc apply --filename uwm-basic/traffic-generator.yaml
+#+end_src
+
+#+RESULTS: Deploy traffic generator
+#+begin_example
+deployment.apps/traffic-generator created
+#+end_example
+
+
+We can follow along with the generated traffic via the pod logs:
+
+#+NAME: Check traffic generator logs
+#+begin_src bash
+oc logs --namespace uwm-demo deployment/traffic-generator --tail=5
+#+end_src
+
+#+RESULTS: Check traffic generator logs
+#+begin_example
+13:04:21 GET /products
+13:04:24 GET /internal-err
+13:04:29 GET /api/users
+13:04:33 GET /err
+13:04:37 GET /products
+#+end_example
+
+
+* Review scraped metrics
+
+We can confirm the metrics are being collected by querying the cluster ~Thanos Querier~ with our user token. Note the ~namespace~ parameter, this is required when querying user workload metrics via the Thanos Querier:
+
+#+NAME: Query scraped metrics
+#+begin_src bash
+export THANOS_QUERIER_URL="https://$(oc get route --namespace openshift-monitoring thanos-querier --output jsonpath='{.spec.host}')"
+
+curl --insecure --silent \
+    --header "Authorization: Bearer $(oc whoami --show-token)" \
+    --get \
+    --data-urlencode 'namespace=uwm-demo' \
+    --data-urlencode 'query=sum(http_requests_total) by (job)' \
+    "${THANOS_QUERIER_URL}/api/v1/query"
+#+end_src
+
+#+RESULTS: Query scraped metrics
+#+begin_example
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"job":"thanos-querier"},"value":[1795382593.230,"4868"]},{"metric":{"job":"payments-api"},"value":[1795382593.230,"3886"]}],"analysis":{}}}
+#+end_example
+
+
+The same metrics are visible from the OpenShift web console under **Observe** -> **Metrics**, where we can graph ~http_requests_total~ for our ~uwm-demo~ namespace 🎉
+
+
+* Create perses dashboard
+
+To visualise those metrics we can provision a [[https://perses.dev/][Perses]] dashboard in the ~uwm-demo~ project. The manifest includes panels for request rate, 4xx/5xx errors, latency percentiles, and request rates by status code and HTTP method:
+
+#+NAME: Create perses dashboard
+#+begin_src bash
+oc apply --filename uwm-basic/dashboard.yaml
+#+end_src
+
+#+RESULTS: Create perses dashboard
+#+begin_example
+persesdashboard.perses.dev/uwm-demo-http-requests configured
+#+end_example
+
+
+The dashboard is available under **Observe** -> **Dashboards** in the OpenShift web console.
+
+
+* Push metrics from short-lived pods
+
+Scraping works well for long running workloads with a stable endpoint, but a pod that only lives for a few seconds can come and go between scrapes, often before Prometheus has even discovered it. For those workloads we can flip the direction and have the job push its metrics to a [[https://github.com/prometheus/pushgateway][Prometheus Pushgateway]] just before it exits. Prometheus still scrapes the Pushgateway, so the last pushed values remain queryable after the pod is gone.
+
+** Deploy pushgateway
+
+We'll deploy a single replica alongside a ~Service~ and ~ServiceMonitor~ so that user workload monitoring scrapes it like any other target:
+
+#+NAME: Deploy pushgateway
+#+begin_src bash
+oc apply --filename uwm-push/pushgateway.yaml
+#+end_src
+
+#+RESULTS: Deploy pushgateway
+#+begin_example
+deployment.apps/pushgateway created
+service/pushgateway created
+servicemonitor.monitoring.coreos.com/pushgateway created
+#+end_example
+
+
+** Run a short-lived job
+
+Our sample job simulates a few seconds of work, pushes a duration gauge and a status gauge to the Pushgateway, and then exits:
+
+#+NAME: Run short-lived job
+#+begin_src bash
+oc apply --filename uwm-push/short-lived-job.yaml
+#+end_src
+
+#+RESULTS: Run short-lived job
+#+begin_example
+job.batch/batch-demo unchanged
+#+end_example
+
+
+The pod is gone within seconds, but the metrics it pushed are still available:
+
+#+NAME: Check short-lived job
+#+begin_src bash
+oc get jobs --namespace uwm-demo batch-demo
+#+end_src
+
+#+RESULTS: Check short-lived job
+#+begin_example
+NAME         STATUS     COMPLETIONS   DURATION   AGE
+batch-demo   Complete   1/1           10s        14m
+#+end_example
+
+#+begin_quote
+Note: Pushgateway holds the last pushed value as a snapshot rather than a full time series. The job uses a fixed ~job~ label so repeat runs overwrite the same group instead of accumulating one per pod. OpenShift forces ~honor_labels: false~ on user workload scrape targets, so the pushed ~job~ label turns up as ~exported_job~ while ~job~ identifies the Pushgateway itself. For a real deployment add persistence, and use the automatically generated ~push_time_seconds~ metric to filter out stale groups, for example ~time() - push_time_seconds < 3600~.
+#+end_quote
+
+
+** Create a batch job dashboard
+
+The metrics pushed by our short-lived job have different names and labels to the sample app, so they won't appear on the earlier dashboard. We can provision a second ~Perses~ dashboard for them:
+
+#+NAME: Create batch job dashboard
+#+begin_src bash
+oc apply --filename uwm-push/dashboard.yaml
+#+end_src
+
+#+RESULTS: Create batch job dashboard
+#+begin_example
+persesdashboard.perses.dev/uwm-push-batch-jobs created
+#+end_example
+
+
+* Push metrics with OpenTelemetry
+
+The Pushgateway works, but it has some drawbacks: metrics are held in memory (a pod restart loses everything), pushed groups never expire without manual cleanup, and it is a Prometheus-specific protocol. An [[https://opentelemetry.io/][OpenTelemetry]] Collector offers an alternative. The short-lived job pushes metrics to the collector over the vendor-neutral ~OTLP~ protocol, and the collector exposes them in Prometheus format on a stable ~:8889/metrics~ endpoint that our existing ~ServiceMonitor~ scrapes. The collector's ~metric_expiration~ setting automatically drops metrics that have not been refreshed, so stale series disappear on their own.
+
+** Deploy the collector
+
+We'll deploy a single replica with an ~OTLP~ receiver (gRPC ~:4317~ and HTTP ~:4318~), a ~batch~ processor, and a Prometheus exporter on ~:8889~. The ~Service~ and ~ServiceMonitor~ wire it into user workload monitoring just like any other scrape target:
+
+#+NAME: Deploy otel collector
+#+begin_src bash
+oc apply --filename uwm-otel/collector.yaml
+#+end_src
+
+#+RESULTS: Deploy otel collector
+#+begin_example
+configmap/otel-collector-config created
+deployment.apps/otel-collector created
+service/otel-collector created
+servicemonitor.monitoring.coreos.com/otel-collector created
+#+end_example
+
+
+We can confirm the collector is ready and that user workload monitoring has discovered the scrape target:
+
+#+NAME: Check otel collector pod
+#+begin_src bash
+oc get pods --namespace uwm-demo --selector app=otel-collector
+#+end_src
+
+#+RESULTS: Check otel collector pod
+#+begin_example
+NAME                              READY   STATUS    RESTARTS   AGE
+otel-collector-6bf9bfc78d-9d5r6   1/1     Running   0          18s
+#+end_example
+
+
+** Run a short-lived job (repeatable)
+
+The sample job does the same simulated work as the Pushgateway example, but pushes an ~OTLP/JSON~ payload to ~http://otel-collector:4318/v1/metrics~ instead. The manifest uses ~generateName~ rather than a fixed ~name~, so every run creates a fresh ~Job~ with a unique suffix. Use ~oc create~ instead of ~oc apply~ and run it as many times as you like:
+
+#+NAME: Run otel short-lived job
+#+begin_src bash
+oc create --filename uwm-otel/short-lived-job.yaml
+#+end_src
+
+#+RESULTS: Run otel short-lived job
+#+begin_example
+job.batch/otel-batch-demo-27bmn created
+#+end_example
+
+
+Each run produces a new completed ~Job~:
+
+#+NAME: Check otel jobs
+#+begin_src bash
+oc get jobs --namespace uwm-demo --selector app=otel-batch-demo
+#+end_src
+
+#+RESULTS: Check otel jobs
+#+begin_example
+NAME                    STATUS     COMPLETIONS   DURATION   AGE
+otel-batch-demo-hx22v   Complete   1/1           6s         17s
+otel-batch-demo-mdhnz   Complete   1/1           11s        16s
+otel-batch-demo-ql688   Complete   1/1           8s         16s
+#+end_example
+
+
+** Review the metrics
+
+The pushed metrics become queryable through Thanos Querier with the familiar ~namespace~ parameter. Note that ~job~ identifies the collector scrape target while the OTLP ~service.name~ attribute surfaces as ~exported_job~, the same ~honor_labels: false~ behaviour we saw with the Pushgateway:
+
+#+NAME: Query otel metrics
+#+begin_src bash
+export THANOS_QUERIER_URL="https://$(oc get route --namespace openshift-monitoring thanos-querier --output jsonpath='{.spec.host}')"
+
+curl --insecure --silent \
+    --header "Authorization: Bearer $(oc whoami --show-token)" \
+    --get \
+    --data-urlencode 'namespace=uwm-demo' \
+    --data-urlencode 'query=otel_batch_job_duration_seconds{namespace="uwm-demo", job="otel-collector"}' \
+    "${THANOS_QUERIER_URL}/api/v1/query"
+#+end_src
+
+#+RESULTS: Query otel metrics
+#+begin_example
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"otel_batch_job_duration_seconds","container":"otel-collector","endpoint":"metrics","exported_job":"otel-batch-demo","instance":"10.233.0.200:8889","job":"otel-collector","namespace":"uwm-demo","otel_scope_name":"otel-batch-demo","pod":"otel-collector-6bf9bfc78d-9d5r6","prometheus":"openshift-user-workload-monitoring/user-workload","service":"otel-collector"},"value":[1795396153.230,"7"]}],"analysis":{}}}
+#+end_example
+
+
+#+begin_quote
+Note: the collector still holds the latest metric values in memory, so a collector restart loses the current snapshots. Unlike the Pushgateway, ~metric_expiration: 60m~ means stale series are automatically dropped rather than lingering forever, and ~OTLP~ gives the job built-in batching and retry semantics. For a real deployment run multiple collector replicas behind the ~Service~ and consider sending the metrics onward to a remote-write receiver for long-term storage.
+#+end_quote
+
+
+** Create an OTLP dashboard
+
+A third ~Perses~ dashboard visualises the ~OTLP~ metrics alongside the scrape health of the collector itself:
+
+#+NAME: Create otel dashboard
+#+begin_src bash
+oc apply --filename uwm-otel/dashboard.yaml
+#+end_src
+
+#+RESULTS: Create otel dashboard
+#+begin_example
+persesdashboard.perses.dev/uwm-otel-batch-jobs created
+#+end_example
