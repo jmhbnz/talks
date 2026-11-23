@@ -1,0 +1,60 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: otel-batch-demo-
+  namespace: uwm-demo
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: otel-batch-demo
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: otel-push
+          image: docker.io/curlimages/curl:8.11.1
+          command:
+            - sh
+            - -c
+            - |
+              duration=$((RANDOM % 5 + 3))
+              sleep ${duration}
+              ts=$(date +%s)000000000
+              cat > /tmp/metrics.json <<EOF
+              {
+                "resourceMetrics": [{
+                  "resource": {
+                    "attributes": [
+                      {"key": "service.name", "value": {"stringValue": "otel-batch-demo"}}
+                    ]
+                  },
+                  "scopeMetrics": [{
+                    "scope": {"name": "otel-batch-demo"},
+                    "metrics": [
+                      {
+                        "name": "otel_batch_job_duration_seconds",
+                        "description": "How long the batch job took",
+                        "unit": "s",
+                        "gauge": {
+                          "dataPoints": [{"asDouble": ${duration}, "timeUnixNano": "${ts}"}]
+                        }
+                      },
+                      {
+                        "name": "otel_batch_job_status",
+                        "description": "Result of the batch job",
+                        "gauge": {
+                          "dataPoints": [{"asInt": "1", "timeUnixNano": "${ts}"}]
+                        }
+                      }
+                    ]
+                  }]
+                }]
+              }
+              EOF
+              curl --silent --show-error --fail \
+                --header 'Content-Type: application/json' \
+                --data @/tmp/metrics.json \
+                http://otel-collector:4318/v1/metrics
+              echo "Pushed OTLP metrics to otel-collector"

@@ -1,0 +1,32 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-demo
+  namespace: uwm-demo
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: batch-demo
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: batch-demo
+          image: docker.io/library/busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              duration=$((RANDOM % 5 + 2))
+              sleep ${duration}
+              cat << EOF > /tmp/metrics
+              # HELP batch_job_duration_seconds How long the batch job took
+              # TYPE batch_job_duration_seconds gauge
+              batch_job_duration_seconds ${duration}
+              # HELP batch_job_status Result of the batch job
+              # TYPE batch_job_status gauge
+              batch_job_status{result="success"} 1
+              EOF
+              wget --quiet --output-document=/dev/null --post-file=/tmp/metrics "http://pushgateway:9091/metrics/job/batch-demo"

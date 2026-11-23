@@ -1,0 +1,14 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-example-app
+  namespace: uwm-demo
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-example-app
+  endpoints:
+    - port: web
+      path: /metrics
+      interval: 30s
